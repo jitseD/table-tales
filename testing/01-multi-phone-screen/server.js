@@ -1,3 +1,4 @@
+
 const express = require('express');
 const app = express();
 const https = require(`https`);
@@ -16,6 +17,7 @@ const port = 443;
 const danceCodes = {};
 
 app.use(express.static('public'))
+app.use('/node_modules', express.static('node_modules'));
 server.listen(port, () => {
     console.log(`App listening on port ${port}`)
 })
@@ -40,7 +42,7 @@ io.on('connection', socket => {
         do {
             code = generateRandomCode(codeLength);
         } while (danceCodes[code]);
-        
+
         danceCodes[code] = [socket.id];
         socket.join(code);
         socket.emit('danceCode', code);
@@ -56,7 +58,11 @@ io.on('connection', socket => {
             socket.emit('invalidCode');
         }
     });
-    
+
+    socket.on('swipe', (code, data) => {
+        console.log(code, data);
+    });
+
     socket.on('disconnect', () => {
         for (const code in danceCodes) {
             danceCodes[code] = danceCodes[code].filter(id => id !== socket.id);

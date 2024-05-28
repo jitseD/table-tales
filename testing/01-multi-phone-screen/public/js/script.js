@@ -11,9 +11,11 @@ const $danceCodeInput = document.querySelector(`.dance__code--input`);
 const $canvas = document.querySelector(`.canvas`);
 
 let socket;
+let roomCode;
 const canvas = { ctx: null, height: innerHeight, width: innerWidth };
 const square = { x: 50, y: 50, size: 50, dx: 2, dy: 2, fill: `black` };
 
+// ----- canvas ----- //
 const createCanvas = () => {
     canvas.ctx = $canvas.getContext(`2d`);
     const scale = window.devicePixelRatio;
@@ -23,7 +25,6 @@ const createCanvas = () => {
 
     animateSquare();
 }
-
 const animateSquare = () => {
     canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -39,20 +40,20 @@ const animateSquare = () => {
     requestAnimationFrame(animateSquare);
 }
 
+// ----- socket room ----- //
 const createDanceHandle = () => {
     socket.emit(`hostDance`, 6);
     socket.on(`danceCode`, (code) => {
+        roomCode = code
         $initiateDance.classList.add(`hide`);
         $danceLobby.classList.remove(`hide`);
-        $danceCode.textContent = code;
+        $danceCode.textContent = roomCode;
     })
 }
-
 const joinDanceHandle = () => {
     $initiateDance.classList.add(`hide`);
     $formDance.classList.remove(`hide`);
 }
-
 const danceFormSubmitHandle = e => {
     e.preventDefault();
     const danceCode = $danceCodeInput.value.trim();
@@ -64,9 +65,10 @@ const danceFormSubmitHandle = e => {
     }
 
     socket.on(`joinedDance`, (code) => {
+        roomCode = code
         $danceForm.classList.add(`hide`);
         $danceLobby.classList.remove(`hide`);
-        $danceCode.textContent = code;
+        $danceCode.textContent = roomCode;
     })
 
     socket.on(`invalidCode`, () => {
@@ -74,7 +76,21 @@ const danceFormSubmitHandle = e => {
     })
 }
 
+// ----- hammer ----- //
+const handleSwipe = e => {
+    const data = {
+        direction: e.direction,
+        deltaX: e.deltaX,
+        deltaY: e.deltaY,
+        velocityX: e.velocityX,
+        velocityY: e.velocityY
+    }
+
+    socket.emit('swipe', roomCode, data);
+}
+
 const init = () => {
+    // ----- canvas ----- //
     createCanvas();
 
     socket = io.connect(`/`);
@@ -96,9 +112,15 @@ const init = () => {
         }
     })
 
+    // ----- socket room ----- //
     $createDance.addEventListener(`click`, createDanceHandle);
     $joinDance.addEventListener(`click`, joinDanceHandle);
     $danceForm.addEventListener(`submit`, danceFormSubmitHandle);
+
+    // ----- hammer ----- //
+    const hammer = new Hammer($canvas);
+    hammer.get('swipe').set({ direction: Hammer.DIRECTION_ALL });
+    hammer.on('swipe', handleSwipe);
 };
 
 init();
