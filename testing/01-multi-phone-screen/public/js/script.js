@@ -86,7 +86,7 @@ const handleSwipe = e => {
         velocityY: e.velocityY
     }
 
-    socket.emit('swipe', roomCode, data);
+    socket.emit('swipe', roomCode, data, Date.now());
 }
 
 const init = () => {

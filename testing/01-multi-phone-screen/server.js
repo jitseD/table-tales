@@ -15,6 +15,8 @@ const io = new Server(server);
 
 const port = 443;
 const danceCodes = {};
+const timestampThreshold = 3000;
+let swipeEvents = [];
 
 app.use(express.static('public'))
 app.use('/node_modules', express.static('node_modules'));
@@ -33,6 +35,22 @@ const generateRandomCode = (codeLength) => {
 
     return code;
 }
+
+const calculateSimultaneousSwipes = (latestSwipeEvent) => {
+    swipeEvents = swipeEvents.filter(swipeEvent => {
+        const timeDifferenceNow = Math.abs(swipeEvent.timestamp - Date.now());
+        return timeDifferenceNow <= timestampThreshold;
+    });
+
+    if (swipeEvents.length > 0) {
+        for (let i = 0; i < swipeEvents.length - 1; i++) {
+            const timeDifference = Math.abs(swipeEvents[i].timestamp - latestSwipeEvent.timestamp);
+            if (timeDifference <= timestampThreshold && swipeEvents[i].id !== latestSwipeEvent.id) {
+                console.log(`timeDifference: ${timeDifference}`);
+            }
+        }
+    }
+};
 
 io.on('connection', socket => {
     console.log(`Connection`);
@@ -59,8 +77,10 @@ io.on('connection', socket => {
         }
     });
 
-    socket.on('swipe', (code, data) => {
-        console.log(code, data);
+    socket.on('swipe', (code, data, timestamp) => {
+        const swipeEvent = { id: socket.id, code, data, timestamp }
+        calculateSimultaneousSwipes(swipeEvent);
+        swipeEvents.push(swipeEvent);
     });
 
     socket.on('disconnect', () => {
