@@ -4,12 +4,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./css/style.css">
     <title>Document</title>
 </head>
 
 <body>
-    <h1 class="myId"></h1>
-    <ul class="otherIds"></ul>
+    <h1 class="my__id"></h1>
+    <section class="initiate__dance">
+        <button class="create__dance" type="button">create dance</button>
+        <button class="join__dance" type="button">join dance</button>
+    </section>
+    <section class="form__dance hide">
+        <form class="dance__form">
+            <input class="dance__code--input" type="text" id="danceCodeInput" placeholder="XXXXXX">
+            <button id="joinDanceButton" type="submit">Join Dance</button>
+        </form>
+    </section>
+    <section class="lobby__dance hide">
+        <p class="dance__code"></p>
+        <ul class="other__ids"></ul>
+    </section>
     <script src="/socket.io/socket.io.js"></script>
     <script src="./js/script.js"></script>
 </body>
