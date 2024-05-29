@@ -12,9 +12,10 @@ const $canvas = document.querySelector(`.canvas`);
 
 let socket;
 let roomCode;
+let roomHost = false;
 const screenDimensions = { height: innerHeight, width: innerWidth };
 const canvas = { ctx: null, height: innerHeight, width: innerWidth };
-const square = { x: 50, y: 50, size: 50, dx: 2, dy: 2, fill: `black` };
+let square = { x: 50, y: 50, size: 50, dx: 2, dy: 2, fill: `black` };
 
 // ----- canvas ----- //
 const createCanvas = () => {
@@ -23,11 +24,11 @@ const createCanvas = () => {
     $canvas.width = Math.floor(canvas.width * scale);
     $canvas.height = Math.floor(canvas.height * scale);
     canvas.ctx.scale(scale, scale);
-
-    // animateSquare();
-
+    $canvas.style.width = `${canvas.width}px`;
+    $canvas.style.height = `${canvas.height}px`;
 }
 const animateSquare = () => {
+    if (!roomHost) return
     canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     canvas.ctx.fillStyle = square.fill;
@@ -39,7 +40,18 @@ const animateSquare = () => {
     if (square.x + square.size > canvas.width || square.x < 0) square.dx *= -1;
     if (square.y + square.size > canvas.height || square.y < 0) square.dy *= -1;
 
+    console.log(`animateSquare`);
+    socket.emit(`showSquare`, roomCode, square);
+
     requestAnimationFrame(animateSquare);
+}
+const showSquare = () => {
+    if (roomHost) return
+    canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    canvas.ctx.fillStyle = square.fill;
+    canvas.ctx.fillRect(square.x, square.y, square.size, square.size);
+    console.log(`showSquare`);
 }
 
 // ----- socket room ----- //
@@ -78,7 +90,7 @@ const danceFormSubmitHandle = e => {
     })
 }
 
-// ----- hammer ----- //
+// ----- swipe ----- //
 const handleSwipe = e => {
     const data = {
         angle: e.angle,
@@ -116,29 +128,39 @@ const init = () => {
         }
     })
 
-    socket.on(`relativePosition`, ({ coords, rotation }) => {
-        canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // ----- update canvas ----- //
+    socket.on(`updateCanvas`, (room) => {
+        canvas.width = room.canvas.width;
+        canvas.height = room.canvas.height;
+        createCanvas();
 
-        console.log(coords);
-        canvas.ctx.beginPath();
-        canvas.ctx.strokeStyle = 'red';
-        canvas.ctx.strokeWidth = 5;
-        canvas.ctx.moveTo(0 + 150, 0 + 150);
-        canvas.ctx.lineTo(screenDimensions.width / 5 + 150, 0 + 150);
-        canvas.ctx.lineTo(screenDimensions.width / 5 + 150, screenDimensions.height / 5 + 150);
-        canvas.ctx.lineTo(0 + 150, screenDimensions.height / 5 + 150);
-        canvas.ctx.closePath();
-        canvas.ctx.stroke();
+        let top = canvas.height;
+        let left = canvas.width;
 
-        console.log(coords);
-        canvas.ctx.beginPath();
-        canvas.ctx.strokeStyle = 'blue';
-        canvas.ctx.moveTo(coords[0].x / 5 + 150, coords[0].y / 5 + 150);
-        for (let i = 1; i < coords.length; i++) {
-            canvas.ctx.lineTo(coords[i].x / 5 + 150, coords[i].y / 5 + 150);
+        room.clients[socket.id].coords.forEach(coord => {
+            if (coord.x < left) left = coord.x;
+            if (coord.y < top) top = coord.y;
+        });
+
+        console.log(room.clients[socket.id].coords);
+        $canvas.style.top = `${-top}px`;
+        $canvas.style.left = `${-left}px`;
+        $canvas.style.width = `${canvas.width}px`;
+        $canvas.style.height = `${canvas.height}px`;
+
+        if (room.host === socket.id) {
+            roomHost = true;
+            animateSquare();
+        } else {
+            roomHost = false;
         }
-        canvas.ctx.closePath();
-        canvas.ctx.stroke();
+    })
+
+    socket.on(`showSquare`, (data)=>{
+        if (!roomHost) {
+            square = data;
+            showSquare();
+        }
     })
 
     // ----- socket room ----- //
