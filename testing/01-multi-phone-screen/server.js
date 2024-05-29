@@ -62,23 +62,25 @@ const calculateSimultaneousSwipes = (code, latestSwipeEvent) => {
     const roomSwipeEvents = swipeEvents.filter(swipeEvent => {
         return swipeEvent.code === code && swipeEvent.id !== latestSwipeEvent.id;
     });
-    console.log(`roomSwipeEvents: ${roomSwipeEvents}`);
 
     if (roomSwipeEvents.length > 0) {
         for (let i = 0; i < roomSwipeEvents.length; i++) {
             const timeDifference = Math.abs(roomSwipeEvents[i].timestamp - latestSwipeEvent.timestamp);
             if (timeDifference <= timestampThreshold) {
-                console.log(`timeDifference: ${timeDifference}`);
                 const clientA = danceRooms[code].clients[swipeEvents[i].id];
                 const clientB = danceRooms[code].clients[latestSwipeEvent.id];
 
-                if (clientA && clientB) {
-                    const relativePosition = calculateRelativePositions(clientA, clientB, swipeEvents[i].data, latestSwipeEvent.data);
-                    
-                }
+                const relativePosition = calculateRelativePositions(clientA, clientB, swipeEvents[i].data, latestSwipeEvent.data);
+                // console.log(relativePosition.coords, relativePosition.rotation);
+                io.to(code).emit(`relativePosition`, relativePosition);
+
+                swipeEvents.splice(swipeEvents.indexOf(roomSwipeEvents[i]), 1);
+                return;
             }
         }
     }
+
+    swipeEvents.push(latestSwipeEvent)
 };
 
 const roundAngle = (angle) => {
@@ -92,30 +94,52 @@ const roundAngle = (angle) => {
     return 0;
 };
 
+const getScreenCoordinates = (i, screen) => {
+    switch (i) {
+        case 0: return { x: 0, y: 0 };                                        // Top-left
+        case 1: return { x: screen.width, y: 0 };                             // Top-right
+        case 2: return { x: screen.width, y: screen.height };                 // Bottom-right
+        case 3: return { x: 0, y: screen.height };                            // Bottom-left
+        default: return { x: 0, y: 0 };
+    }
+}
+
 const calculateRelativePositions = (clientA, clientB, swipeA, swipeB) => {
-    const centerX = clientB.screenWidth / 2;
-    const centerY = clientB.screenHeight / 2;
-    const startX = 0;
-    const startY = 0;
+    const angleDiff = roundAngle(swipeB.angle) - roundAngle(swipeA.angle);    // deg
+    const coords = [];
+    
+    for (let i = 0; i < 4; i++) {
+        const screenCoordinates = getScreenCoordinates(i, clientB);
+        const relativeCoordinate = calculateRelativeCoordinates(screenCoordinates, angleDiff, clientA, clientB, swipeA, swipeB);
+        coords.push(relativeCoordinate);
+    }
+    
+    return { coords, rotation: angleDiff };
+}
+
+const calculateRelativeCoordinates = (coord, angleDiff, clientA, clientB, swipeA, swipeB) => {
+    const centerX = clientB.width / 2;
+    const centerY = clientB.height / 2;
+    const angleDiffRad = angleDiff * (Math.PI / 180);                         // rad
 
     // rotate screen B
-    let angleDiff = roundAngle(swipeB.angle) - roundAngle(swipeA.angle);    // deg
-    angleDiff = angleDiff * (Math.PI / 180);                                // rad
-
-    let posX = ((startX - centerX) * Math.cos(angleDiff) - (startY - centerY) * Math.sin(angleDiff)) + centerX;
-    let posY = ((startX - centerX) * Math.sin(angleDiff) + (startY - centerY) * Math.cos(angleDiff)) + centerY;
+    let posX = (coord.x - centerX) * Math.cos(angleDiffRad) - (coord.y - centerY) * Math.sin(angleDiffRad) + centerX;
+    let posY = (coord.x - centerX) * Math.sin(angleDiffRad) + (coord.y - centerY) * Math.cos(angleDiffRad) + centerY;
 
     // move screen B by swipe A
-    posX = posX + swipeA.deltaX - clientA.screenWidth / 2;
-    posY = posY + swipeA.deltaY - clientA.screenHeight / 2;
+    posX = posX + swipeA.x - clientA.width / 2;
+    posY = posY + swipeA.y - clientA.height / 2;
 
-    // move screen B by swipe B
-    const deltaX = swipeB.deltaX - centerX;
-    const deltaY = swipeB.deltaY - centerY
-    posX = posX + deltaX * Math.cos(angleDiff) - deltaY * Math.sin(angleDiff);
-    posY = posY + deltaX * Math.sin(angleDiff) + deltaY * Math.cos(angleDiff);
+    // // move screen B by swipe B
+    const deltaX = swipeB.x - centerX;
+    const deltaY = swipeB.y - centerY;
 
-    return { posX: posX, posY: posY, rotation: angleDiff };
+    switch (angleDiff) {
+        case 90: return { x: posX + deltaY, y: posY - deltaX };
+        case 180: return { x: posX - deltaX, y: posY - deltaY };
+        case 270: return { x: posX - deltaY, y: posY + deltaX };
+        default: return { x: posX + deltaX, y: posY + deltaY };
+    }
 }
 
 io.on('connection', socket => {
@@ -149,7 +173,6 @@ io.on('connection', socket => {
     socket.on('swipe', (code, data, timestamp) => {
         const swipeEvent = { id: socket.id, code, data, timestamp }
         calculateSimultaneousSwipes(code, swipeEvent);
-        swipeEvents.push(swipeEvent);
     });
 
     socket.on('disconnect', () => {

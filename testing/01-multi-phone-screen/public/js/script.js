@@ -24,7 +24,8 @@ const createCanvas = () => {
     $canvas.height = Math.floor(canvas.height * scale);
     canvas.ctx.scale(scale, scale);
 
-    animateSquare();
+    // animateSquare();
+
 }
 const animateSquare = () => {
     canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -81,11 +82,13 @@ const danceFormSubmitHandle = e => {
 const handleSwipe = e => {
     const data = {
         angle: e.angle,
-        deltaX: e.deltaX,
-        deltaY: e.deltaY,
+        x: e.center.x,
+        y: e.center.y,
         velocityX: e.velocityX,
         velocityY: e.velocityY
     }
+
+    console.log(e);
 
     socket.emit('swipe', roomCode, data, Date.now());
 }
@@ -111,6 +114,31 @@ const init = () => {
                 }
             }
         }
+    })
+
+    socket.on(`relativePosition`, ({ coords, rotation }) => {
+        canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        console.log(coords);
+        canvas.ctx.beginPath();
+        canvas.ctx.strokeStyle = 'red';
+        canvas.ctx.strokeWidth = 5;
+        canvas.ctx.moveTo(0 + 150, 0 + 150);
+        canvas.ctx.lineTo(screenDimensions.width / 5 + 150, 0 + 150);
+        canvas.ctx.lineTo(screenDimensions.width / 5 + 150, screenDimensions.height / 5 + 150);
+        canvas.ctx.lineTo(0 + 150, screenDimensions.height / 5 + 150);
+        canvas.ctx.closePath();
+        canvas.ctx.stroke();
+
+        console.log(coords);
+        canvas.ctx.beginPath();
+        canvas.ctx.strokeStyle = 'blue';
+        canvas.ctx.moveTo(coords[0].x / 5 + 150, coords[0].y / 5 + 150);
+        for (let i = 1; i < coords.length; i++) {
+            canvas.ctx.lineTo(coords[i].x / 5 + 150, coords[i].y / 5 + 150);
+        }
+        canvas.ctx.closePath();
+        canvas.ctx.stroke();
     })
 
     // ----- socket room ----- //
