@@ -12,6 +12,7 @@ const $canvas = document.querySelector(`.canvas`);
 
 let socket;
 let roomCode;
+const screenDimensions = { height: innerHeight, width: innerWidth };
 const canvas = { ctx: null, height: innerHeight, width: innerWidth };
 const square = { x: 50, y: 50, size: 50, dx: 2, dy: 2, fill: `black` };
 
@@ -42,7 +43,7 @@ const animateSquare = () => {
 
 // ----- socket room ----- //
 const createDanceHandle = () => {
-    socket.emit(`hostDance`, 6);
+    socket.emit(`hostDance`, 6, screenDimensions);
     socket.on(`danceCode`, (code) => {
         roomCode = code
         $initiateDance.classList.add(`hide`);
@@ -58,7 +59,7 @@ const danceFormSubmitHandle = e => {
     e.preventDefault();
     const danceCode = $danceCodeInput.value.trim();
     if (danceCode !== ``) {
-        socket.emit(`joinDance`, danceCode);
+        socket.emit(`joinDance`, danceCode, screenDimensions);
     } else {
         console.log($danceCodeInput.value);
         console.log(`please enter a dance code`);
@@ -79,7 +80,7 @@ const danceFormSubmitHandle = e => {
 // ----- hammer ----- //
 const handleSwipe = e => {
     const data = {
-        direction: e.direction,
+        angle: e.angle,
         deltaX: e.deltaX,
         deltaY: e.deltaY,
         velocityX: e.velocityX,

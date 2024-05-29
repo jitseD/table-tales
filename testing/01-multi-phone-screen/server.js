@@ -14,7 +14,7 @@ const { Server } = require("socket.io");
 const io = new Server(server);
 
 const port = 443;
-const danceCodes = {};
+const danceRooms = {};
 const timestampThreshold = 3000;
 let swipeEvents = [];
 
@@ -36,42 +36,111 @@ const generateRandomCode = (codeLength) => {
     return code;
 }
 
-const calculateSimultaneousSwipes = (latestSwipeEvent) => {
+const addClientToRoom = (code, client) => {
+    if (!danceRooms[code]) {
+        danceRooms[code] = { clients: {} };
+    }
+    danceRooms[code].clients[client.id] = client;
+}
+
+const removeClientFromRoom = (code, clientId) => {
+    delete danceRooms[code].clients[clientId];
+    if (danceRooms[code].length === 0) {
+        delete danceRooms[code];
+    } else {
+        const roomClients = Object.keys(danceRooms[code].clients);
+        io.to(code).emit('clientList', roomClients);
+    }
+};
+
+const calculateSimultaneousSwipes = (code, latestSwipeEvent) => {
     swipeEvents = swipeEvents.filter(swipeEvent => {
         const timeDifferenceNow = Math.abs(swipeEvent.timestamp - Date.now());
         return timeDifferenceNow <= timestampThreshold;
     });
 
-    if (swipeEvents.length > 0) {
-        for (let i = 0; i < swipeEvents.length - 1; i++) {
-            const timeDifference = Math.abs(swipeEvents[i].timestamp - latestSwipeEvent.timestamp);
-            if (timeDifference <= timestampThreshold && swipeEvents[i].id !== latestSwipeEvent.id) {
+    const roomSwipeEvents = swipeEvents.filter(swipeEvent => {
+        return swipeEvent.code === code && swipeEvent.id !== latestSwipeEvent.id;
+    });
+    console.log(`roomSwipeEvents: ${roomSwipeEvents}`);
+
+    if (roomSwipeEvents.length > 0) {
+        for (let i = 0; i < roomSwipeEvents.length; i++) {
+            const timeDifference = Math.abs(roomSwipeEvents[i].timestamp - latestSwipeEvent.timestamp);
+            if (timeDifference <= timestampThreshold) {
                 console.log(`timeDifference: ${timeDifference}`);
+                const clientA = danceRooms[code].clients[swipeEvents[i].id];
+                const clientB = danceRooms[code].clients[latestSwipeEvent.id];
+
+                if (clientA && clientB) {
+                    const relativePosition = calculateRelativePositions(clientA, clientB, swipeEvents[i].data, latestSwipeEvent.data);
+                    
+                }
             }
         }
     }
 };
 
+const roundAngle = (angle) => {
+    const angleNormalized = ((angle % 360) + 360) % 360;
+
+    if (angleNormalized >= 0 && angleNormalized < 45) return 0;
+    if (angleNormalized >= 45 && angleNormalized < 135) return 90;
+    if (angleNormalized >= 135 && angleNormalized < 225) return 180;
+    if (angleNormalized >= 225 && angleNormalized < 315) return 270;
+
+    return 0;
+};
+
+const calculateRelativePositions = (clientA, clientB, swipeA, swipeB) => {
+    const centerX = clientB.screenWidth / 2;
+    const centerY = clientB.screenHeight / 2;
+    const startX = 0;
+    const startY = 0;
+
+    // rotate screen B
+    let angleDiff = roundAngle(swipeB.angle) - roundAngle(swipeA.angle);    // deg
+    angleDiff = angleDiff * (Math.PI / 180);                                // rad
+
+    let posX = ((startX - centerX) * Math.cos(angleDiff) - (startY - centerY) * Math.sin(angleDiff)) + centerX;
+    let posY = ((startX - centerX) * Math.sin(angleDiff) + (startY - centerY) * Math.cos(angleDiff)) + centerY;
+
+    // move screen B by swipe A
+    posX = posX + swipeA.deltaX - clientA.screenWidth / 2;
+    posY = posY + swipeA.deltaY - clientA.screenHeight / 2;
+
+    // move screen B by swipe B
+    const deltaX = swipeB.deltaX - centerX;
+    const deltaY = swipeB.deltaY - centerY
+    posX = posX + deltaX * Math.cos(angleDiff) - deltaY * Math.sin(angleDiff);
+    posY = posY + deltaX * Math.sin(angleDiff) + deltaY * Math.cos(angleDiff);
+
+    return { posX: posX, posY: posY, rotation: angleDiff };
+}
+
 io.on('connection', socket => {
     console.log(`Connection`);
 
-    socket.on('hostDance', (codeLength) => {
+    socket.on('hostDance', (codeLength, data) => {
         let code;
         do {
             code = generateRandomCode(codeLength);
-        } while (danceCodes[code]);
+        } while (danceRooms[code]);
 
-        danceCodes[code] = [socket.id];
+        data.id = socket.id;
+        addClientToRoom(code, data);
         socket.join(code);
         socket.emit('danceCode', code);
     });
 
-    socket.on('joinDance', code => {
-        if (danceCodes[code]) {
-            danceCodes[code].push(socket.id);
+    socket.on('joinDance', (code, data) => {
+        if (danceRooms[code]) {
+            data.id = socket.id;
+            addClientToRoom(code, data);
             socket.join(code);
             socket.emit('joinedDance', code);
-            io.to(code).emit('clientList', danceCodes[code]);
+            const roomClients = Object.keys(danceRooms[code].clients);
+            io.to(code).emit('clientList', roomClients);
         } else {
             socket.emit('invalidCode');
         }
@@ -79,19 +148,14 @@ io.on('connection', socket => {
 
     socket.on('swipe', (code, data, timestamp) => {
         const swipeEvent = { id: socket.id, code, data, timestamp }
-        calculateSimultaneousSwipes(swipeEvent);
+        calculateSimultaneousSwipes(code, swipeEvent);
         swipeEvents.push(swipeEvent);
     });
 
     socket.on('disconnect', () => {
-        for (const code in danceCodes) {
-            danceCodes[code] = danceCodes[code].filter(id => id !== socket.id);
+        for (const code in danceRooms) {
             socket.leave(code);
-            if (danceCodes[code].length === 0) {
-                delete danceCodes[code];
-            } else {
-                io.to(code).emit('clientList', danceCodes[code]);
-            }
+            removeClientFromRoom(code, socket.id);
         }
     });
 });
