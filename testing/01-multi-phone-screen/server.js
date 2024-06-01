@@ -11,7 +11,6 @@ const options = {
 
 const server = https.createServer(options, app);
 const { Server } = require("socket.io");
-const { get } = require('http');
 const io = new Server(server);
 
 const port = 443;
