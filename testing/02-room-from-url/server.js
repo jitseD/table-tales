@@ -24,41 +24,37 @@ server.listen(port, () => {
 
 const addClientToRoom = (code, clientId) => {
     if (!rooms[code]) {
-        rooms[code] = { clients: {} };
+        rooms[code] = { clients: {}, host: clientId };
     }
     rooms[code].clients[clientId] = clientId;
-    console.log(rooms);
 }
 
 const removeClientFromRoom = (code, clientId) => {
     delete rooms[code].clients[clientId];
-    if (rooms[code].length === 0) {
+    if (Object.keys(rooms[code].clients).length === 0) {
         delete rooms[code];
     } else {
         const roomClients = Object.keys(rooms[code].clients);
-        io.to(code).emit('clients', roomClients);
+        if (rooms[code].host === clientId) {
+            rooms[code].host = roomClients[0];
+        }
     }
 }
 
 io.on('connection', socket => {
     console.log(`Connection`);
 
-    
     socket.on(`connectToRoom`, (code) => {
         socket.join(code);
         addClientToRoom(code, socket.id);
-
-        const roomClients = Object.keys(rooms[code].clients);
-        io.to(code).emit('clients', roomClients);
+        io.to(code).emit('room', rooms[code]);
     })
 
     socket.on(`disconnect`, () => {
         for (const code in rooms) {
             socket.leave(code);
             removeClientFromRoom(code, socket.id);
+            io.to(code).emit('room', rooms[code]);
         }
-
-        const roomClients = Object.keys(rooms[code].clients);
-        io.to(code).emit('clients', roomClients);
     });
 });
