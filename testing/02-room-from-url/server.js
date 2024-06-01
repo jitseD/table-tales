@@ -15,12 +15,21 @@ const io = new Server(server);
 
 const port = 443;
 const clients = {};
+const rooms = {};
 
 app.use(express.static(`public`))
 app.use(`/node_modules`, express.static(`node_modules`));
 server.listen(port, () => {
     console.log(`App listening on port ${port}`)
 })
+
+const addClientToRoom = (code, clientId) => {
+    if (!rooms[code]) {
+        rooms[code] = { clients: {} };
+    }
+    rooms[code].clients[clientId] = clientId;
+    console.log(rooms);
+}
 
 io.on('connection', socket => {
     console.log(`Connection`);
@@ -30,7 +39,7 @@ io.on('connection', socket => {
     io.emit(`clients`, clientIds);
 
     socket.on(`connectToRoom`, (code) => {
-        console.log(code);
+        addClientToRoom(code, socket.id)
     })
 
     socket.on(`disconnect`, () => {
