@@ -16,8 +16,8 @@ const io = new Server(server);
 const port = 443;
 const clients = {};
 
-app.use(express.static('public'))
-app.use('/node_modules', express.static('node_modules'));
+app.use(express.static(`public`))
+app.use(`/node_modules`, express.static(`node_modules`));
 server.listen(port, () => {
     console.log(`App listening on port ${port}`)
 })
@@ -27,15 +27,17 @@ io.on('connection', socket => {
 
     clients[socket.id] = { id: socket.id };
     const clientIds = Object.keys(clients);
-    console.log(clientIds);
-    io.emit('clients', clientIds);
+    io.emit(`clients`, clientIds);
 
-    socket.on('disconnect', () => {
-        io.emit('client-disconnect', clients[socket.id]);
+    socket.on(`connectToRoom`, (code) => {
+        console.log(code);
+    })
+
+    socket.on(`disconnect`, () => {
+        io.emit(`client-disconnect`, clients[socket.id]);
         delete clients[socket.id];
-        
+
         const clientIds = Object.keys(clients);
-        console.log(clientIds);
-        io.emit('clients', clientIds);
+        io.emit(`clients`, clientIds);
     });
 });
