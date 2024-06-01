@@ -14,7 +14,6 @@ const { Server } = require("socket.io");
 const io = new Server(server);
 
 const port = 443;
-const clients = {};
 const rooms = {};
 
 app.use(express.static(`public`))
@@ -31,22 +30,35 @@ const addClientToRoom = (code, clientId) => {
     console.log(rooms);
 }
 
+const removeClientFromRoom = (code, clientId) => {
+    delete rooms[code].clients[clientId];
+    if (rooms[code].length === 0) {
+        delete rooms[code];
+    } else {
+        const roomClients = Object.keys(rooms[code].clients);
+        io.to(code).emit('clients', roomClients);
+    }
+}
+
 io.on('connection', socket => {
     console.log(`Connection`);
 
-    clients[socket.id] = { id: socket.id };
-    const clientIds = Object.keys(clients);
-    io.emit(`clients`, clientIds);
-
+    
     socket.on(`connectToRoom`, (code) => {
-        addClientToRoom(code, socket.id)
+        socket.join(code);
+        addClientToRoom(code, socket.id);
+
+        const roomClients = Object.keys(rooms[code].clients);
+        io.to(code).emit('clients', roomClients);
     })
 
     socket.on(`disconnect`, () => {
-        io.emit(`client-disconnect`, clients[socket.id]);
-        delete clients[socket.id];
+        for (const code in rooms) {
+            socket.leave(code);
+            removeClientFromRoom(code, socket.id);
+        }
 
-        const clientIds = Object.keys(clients);
-        io.emit(`clients`, clientIds);
+        const roomClients = Object.keys(rooms[code].clients);
+        io.to(code).emit('clients', roomClients);
     });
 });
