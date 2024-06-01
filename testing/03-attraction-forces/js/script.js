@@ -36,18 +36,52 @@ class Vector {
         this.x = this.x + vector.x;
         this.y = this.y + vector.y;
     }
+
+    mult(n) {
+        this.x = this.x * n;
+        this.y = this.y * n;
+    }
+
+    div(n) {
+        this.x = this.x / n;
+        this.y = this.y / n;
+    }
+
+    limit(max) {
+        if (this.mag() > max) {
+            this.normalize();
+            this.mult(max);
+        }
+    }
+
+    mag() {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+
+    normalize() {
+        let m = this.mag();
+        if (m > 0) {
+            this.div(m);
+        }
+    }
 }
 
 class Mover {
     constructor() {
         this.size = 50;
         this.pos = new Vector(randomNumber(0, canvas.width - this.size), randomNumber(0, canvas.height - this.size));
-        this.vel = new Vector(randomNumber(2, 5), randomNumber(2, 5));
-        this.fill = `black`
+        this.vel = new Vector(0, 0);
+        this.acc = new Vector(randomNumber(1, 10) / 100, randomNumber(1, 10) / 100);
+        this.topSpeed = 20;
+        this.fill = `black`;
     }
 
     update() {
+        this.vel.add(this.acc);
         this.pos.add(this.vel);
+
+        this.vel.limit(this.topSpeed);
+        console.log(this.vel);
     }
 
     show() {
@@ -56,15 +90,31 @@ class Mover {
     }
 
     checkEdges() {
-        if (this.pos.x + this.size > canvas.width || this.pos.x < 0) this.vel.x *= -1;
-        if (this.pos.y + this.size > canvas.height || this.pos.y < 0) this.vel.y *= -1;
+        if (this.pos.x + this.size > canvas.width) {
+            this.pos.x = canvas.width - this.size;
+            this.vel.x *= -1;
+            this.acc.x *= -1;
+        } else if (this.pos.x < 0) {
+            this.pos.x = 0;
+            this.vel.x *= -1;
+            this.acc.x *= -1;
+        }
+
+        if (this.pos.y + this.size > canvas.height) {
+            this.pos.y = canvas.height - this.size;
+            this.vel.y *= -1;
+            this.acc.y *= -1;
+        } else if (this.pos.y < 0) {
+            this.pos.y = 0;
+            this.vel.y *= -1;
+            this.acc.y *= -1;
+        }
     }
 }
 
 const init = () => {
     createCanvas();
     square = new Mover();
-    console.log(square);
 
     animateSquare();
 }
