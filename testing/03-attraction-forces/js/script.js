@@ -5,6 +5,7 @@ let circle;
 let g;
 let wind;
 let mouseIsPressed = false;
+let attraction;
 
 const randomNumber = (min, max) => {
     return Math.floor(Math.random() * (max - min + 1) + min);
@@ -23,9 +24,11 @@ const createCanvas = () => {
 const animateSquare = () => {
     canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (mouseIsPressed) square.applyForce(wind);
+    attraction.show();
+    attraction.calculateAttraction(square);
 
-    square.applyForce(g);
+    if (mouseIsPressed) square.applyForce(wind);
+    // square.applyForce(g);
     square.update();
     square.checkEdges();
     square.show();
@@ -44,6 +47,11 @@ class Vector {
         this.y = this.y + vector.y;
     }
 
+    sub(vector) {
+        this.x = this.x - vector.x;
+        this.y = this.y - vector.y;
+    }
+
     mult(n) {
         this.x = this.x * n;
         this.y = this.y * n;
@@ -52,6 +60,11 @@ class Vector {
     div(n) {
         this.x = this.x / n;
         this.y = this.y / n;
+    }
+
+    abs() {
+        this.x = Math.abs(this.x);
+        this.y = Math.abs(this.y);
     }
 
     limit(max) {
@@ -76,7 +89,7 @@ class Vector {
 class Mover {
     constructor() {
         this.size = 50;
-        this.pos = new Vector(randomNumber(0, canvas.width - this.size), canvas.height / 2);
+        this.pos = new Vector(randomNumber(0, canvas.width - this.size), randomNumber(0, canvas.height - this.size));
         this.vel = new Vector(0, 0);
         this.acc = new Vector(0, 0);
         this.mass = this.size / 5;
@@ -122,24 +135,60 @@ class Mover {
     }
 }
 
-const mouseDownHandle = e => {
-    mouseIsPressed = true;
+class Attraction {
+    constructor() {
+        this.size = 100;
+        this.pos = new Vector(randomNumber(0, canvas.width - this.size), randomNumber(0, canvas.height - this.size));
+        this.fill = `red`;
+    }
+
+    show() {
+        canvas.ctx.fillStyle = this.fill;
+
+        canvas.ctx.fillRect(this.pos.x, this.pos.y, this.size, this.size);
+    }
+
+    calculateAttraction(mover) {
+        let diff = new Vector(this.pos.x, this.pos.y);
+        diff.sub(mover.pos);
+
+        const dist = diff.mag();
+
+        let attractionStrength;
+
+        if (dist > this.size) {
+            attractionStrength = 1000 / dist;
+            console.log(attractionStrength);
+        } else {
+            console.log(`----------------------------`);
+            attractionStrength = 0;
+            mover.vel.mult(0)
+        }
+
+        diff.normalize();
+        diff.mult(attractionStrength);
+
+        mover.applyForce(diff);
+    }
 }
 
-const mouseUpHandle = e => {
-    mouseIsPressed = false;
+const mouseHandle = e => {
+    mouseIsPressed = !mouseIsPressed;
 }
 
 const init = () => {
     createCanvas();
+
+    attraction = new Attraction();
+
     square = new Mover();
     circle = new Mover();
     g = new Vector(0, 0.1);
     g.mult(square.mass);
     wind = new Vector(0.5, 0);
 
-    $canvas.addEventListener(`mousedown`, mouseDownHandle);
-    $canvas.addEventListener(`mouseup`, mouseUpHandle);
+    $canvas.addEventListener(`mousedown`, mouseHandle);
+    $canvas.addEventListener(`mouseup`, mouseHandle);
     animateSquare();
 }
 
