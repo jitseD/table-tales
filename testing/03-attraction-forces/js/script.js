@@ -5,7 +5,7 @@ let circle;
 let g;
 let wind;
 let mouseIsPressed = false;
-let attraction;
+let attractions = [];
 
 const randomNumber = (min, max) => {
     return Math.floor(Math.random() * (max - min + 1) + min);
@@ -24,8 +24,11 @@ const createCanvas = () => {
 const animateSquare = () => {
     canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    attraction.show();
-    attraction.calculateAttraction(square);
+    for (let i = 0; i < attractions.length; i++) {
+        const attraction = attractions[i];
+        attraction.show();
+        attraction.calculateAttraction(square);
+    }
 
     if (mouseIsPressed) square.applyForce(wind);
     // square.applyForce(g);
@@ -101,7 +104,7 @@ class Mover {
         this.vel.add(this.acc);
         this.pos.add(this.vel);
 
-        // this.vel.limit(this.topSpeed);
+        this.vel.limit(this.topSpeed);
         this.acc.mult(0);
     }
 
@@ -137,9 +140,10 @@ class Mover {
 
 class Attraction {
     constructor() {
-        this.size = 100;
+        this.size = 10;
         this.pos = new Vector(randomNumber(0, canvas.width - this.size), randomNumber(0, canvas.height - this.size));
-        this.fill = `red`;
+        this.fill = `green`;
+        this.timeout = 0;
     }
 
     show() {
@@ -149,26 +153,32 @@ class Attraction {
     }
 
     calculateAttraction(mover) {
-        let diff = new Vector(this.pos.x, this.pos.y);
-        diff.sub(mover.pos);
+        console.log(this.timeout);
+        if (this.timeout > 100 || this.timeout === 0) {
+            this.timeout = 0;
 
-        const dist = diff.mag();
+            let diff = new Vector(this.pos.x, this.pos.y);
+            diff.sub(mover.pos);
 
-        let attractionStrength;
+            const dist = diff.mag();
 
-        if (dist > this.size) {
-            attractionStrength = 1000 / dist;
-            console.log(attractionStrength);
+            let attractionStrength;
+
+            if (dist > this.size * 2) {
+                attractionStrength = 1000 / dist;
+            } else {
+                attractionStrength = 0;
+                mover.vel.mult(0)
+                this.timeout++;
+            }
+
+            diff.normalize();
+            diff.mult(attractionStrength);
+
+            mover.applyForce(diff);
         } else {
-            console.log(`----------------------------`);
-            attractionStrength = 0;
-            mover.vel.mult(0)
+            this.timeout++;
         }
-
-        diff.normalize();
-        diff.mult(attractionStrength);
-
-        mover.applyForce(diff);
     }
 }
 
@@ -179,7 +189,10 @@ const mouseHandle = e => {
 const init = () => {
     createCanvas();
 
-    attraction = new Attraction();
+    for (let i = 0; i < 4; i++) {
+        const attraction = new Attraction();
+        attractions.push(attraction);
+    }
 
     square = new Mover();
     circle = new Mover();
