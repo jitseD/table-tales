@@ -140,9 +140,10 @@ class Mover {
 
 class Attraction {
     constructor() {
-        this.size = 10;
+        this.attracting = Math.random() > 0.2;
+        this.size = this.attracting ? 10 : 50;
         this.pos = new Vector(randomNumber(0, canvas.width - this.size), randomNumber(0, canvas.height - this.size));
-        this.fill = `green`;
+        this.fill = this.attracting ? `green` : `red`;
         this.timeout = 0;
     }
 
@@ -154,18 +155,20 @@ class Attraction {
 
     calculateAttraction(mover) {
         console.log(this.timeout);
-        if (this.timeout > 100 || this.timeout === 0) {
+
+        if (this.timeout > 100 || this.timeout === 0 || !this.attracting) {
             this.timeout = 0;
 
-            let diff = new Vector(this.pos.x, this.pos.y);
+            const diff = new Vector(this.pos.x, this.pos.y);
             diff.sub(mover.pos);
-
             const dist = diff.mag();
-
             let attractionStrength;
 
-            if (dist > this.size * 2) {
+            if (dist > this.size * 2 || !this.attracting) {
                 attractionStrength = 1000 / dist;
+                if (!this.attracting) {
+                    attractionStrength *= -1;
+                }
             } else {
                 attractionStrength = 0;
                 mover.vel.mult(0)
@@ -179,6 +182,7 @@ class Attraction {
         } else {
             this.timeout++;
         }
+
     }
 }
 
@@ -189,7 +193,7 @@ const mouseHandle = e => {
 const init = () => {
     createCanvas();
 
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 10; i++) {
         const attraction = new Attraction();
         attractions.push(attraction);
     }
