@@ -65,7 +65,7 @@ const init = () => {
     socket = io.connect(`/`);
     socket.on(`connect`, () => {
         $myId.textContent = socket.id;
-        socket.emit(`connectToRoom`, roomCode);
+        socket.emit(`connectToRoom`, roomCode, screenDimensions);
     });
 
     socket.on(`room`, (room) => {
