@@ -90,12 +90,16 @@ const calculateSimultaneousSwipes = (code, latestSwipeEvent) => {
                 const clientB = rooms[code].clients[latestSwipeEvent.id];
 
                 const relPos = calculateRelPos(clientA, clientB, swipeEvents[i].data, latestSwipeEvent.data);
-                console.log(relPos);
+                rooms[code].clients[latestSwipeEvent.id].coords = relPos.coords;
+                updateRoomCanvas(code);
+
+                swipeEvents.splice(swipeEvents.indexOf(roomSwipeEvents[i]), 1);
+                return;
             }
         }
     }
 
-    swipeEvents.push(latestSwipeEvent)
+    swipeEvents.push(latestSwipeEvent);
 };
 const calculateRelPos = (clientA, clientB, swipeA, swipeB) => {
     const angleDiff = roundAngle(swipeB.angle) - roundAngle(swipeA.angle);    // deg
@@ -132,6 +136,39 @@ const calculateRelCoords = (coord, angleDiff, clientA, clientB, swipeA, swipeB) 
         case 270: return { x: posX - deltaY, y: posY + deltaX };
         default: return { x: posX + deltaX, y: posY + deltaY };
     }
+}
+
+// ----- update canvas ------ //
+const updateRoomCanvas = (code) => {
+    const clients = Object.values(rooms[code].clients);
+    if (clients.length === 0) return;
+
+    let minX = 0;
+    let minY = 0;
+    let maxX = rooms[code].canvas.width;
+    let maxY = rooms[code].canvas.height;
+
+    clients.forEach(client => {
+        client.coords.forEach(coord => {
+            if (coord.x < minX) minX = coord.x;
+            if (coord.y < minY) minY = coord.y;
+            if (coord.x > maxX) maxX = coord.x;
+            if (coord.y > maxY) maxY = coord.y;
+        });
+    });
+
+    const shiftX = minX;                                                    // shift coords so that lowest value is origin
+    const shiftY = minY;
+
+    clients.forEach(client => {
+        client.coords = client.coords.map(coord => ({
+            x: coord.x - shiftX,
+            y: coord.y - shiftY
+        }));
+    });
+
+    rooms[code].canvas = { width: maxX - minX, height: maxY - minY };
+    console.log(rooms[code].canvas);
 }
 
 io.on('connection', socket => {
