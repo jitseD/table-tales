@@ -11,19 +11,17 @@ const options = {
 
 const server = https.createServer(options, app);
 const { Server } = require("socket.io");
-const { inflate } = require('zlib');
-const { log } = require('console');
 const io = new Server(server);
 
 const port = 443;
 const rooms = {};
 let swipeEvents = [];
-const timestampThreshold = 3000;
+const timestampThreshold = 5000;
 
 app.use(express.static('public'))
 app.use('/node_modules', express.static('node_modules'));
 server.listen(port, () => {
-    console.log(`App listening on port ${port}`)
+    console.log(`🙉 app listening on port ${port}`)
 })
 
 // ----- calculation functions ----- //
@@ -61,6 +59,10 @@ const getExtremeCoords = (coords) => {
 
     return { minX, minY, maxX, maxY };
 }
+const getScreenRotation = (startRotation, rotation) => {
+    const screenRotation = (rotation + startRotation + 180) % 360;
+    return screenRotation;
+}
 
 // ----- socket room ----- //
 const addClientToRoom = (code, client) => {
@@ -70,6 +72,7 @@ const addClientToRoom = (code, client) => {
         coords.push(coord);
     }
     client.coords = coords;
+    client.rotation = 0;
 
     if (!rooms[code]) {
         rooms[code] = { clients: {}, canvas: { width: client.width, height: client.height }, host: client.id };
@@ -99,7 +102,6 @@ const calculateSimultaneousSwipes = (code, latestSwipeEvent) => {
         return swipeEvent.code === code && swipeEvent.id !== latestSwipeEvent.id;
     });
 
-
     if (roomSwipeEvents.length > 0) {
         for (let i = 0; i < roomSwipeEvents.length; i++) {
             const timeDifference = Math.abs(roomSwipeEvents[i].timestamp - latestSwipeEvent.timestamp);
@@ -107,12 +109,16 @@ const calculateSimultaneousSwipes = (code, latestSwipeEvent) => {
                 const clientA = rooms[code].clients[swipeEvents[i].id];
                 const clientB = rooms[code].clients[latestSwipeEvent.id];
 
-                const relPos = calculateRelPos(clientA, clientB, swipeEvents[i].data, latestSwipeEvent.data);
-                rooms[code].clients[latestSwipeEvent.id].coords = relPos.coords;
-                updateRoomCanvas(code);
+                if (clientA && clientB) {
+                    const relPos = calculateRelPos(clientA, clientB, swipeEvents[i].data, latestSwipeEvent.data);
+                    rooms[code].clients[latestSwipeEvent.id].coords = relPos.coords;
+                    const screenRotation = getScreenRotation(clientA.rotation, relPos.rotation);
+                    rooms[code].clients[latestSwipeEvent.id].rotation = screenRotation;
+                    updateRoomCanvas(code);
 
-                swipeEvents.splice(swipeEvents.indexOf(roomSwipeEvents[i]), 1);
-                return;
+                    swipeEvents.splice(swipeEvents.indexOf(roomSwipeEvents[i]), 1);
+                    return;
+                }
             }
         }
     }
@@ -144,6 +150,9 @@ const calculateRelCoords = (coord, angleDiff, clientA, clientB, swipeA, swipeB) 
     posX += (coord.x - centerX) * Math.cos(angleDiffRad) - (coord.y - centerY) * Math.sin(angleDiffRad) + centerX;
     posY += (coord.x - centerX) * Math.sin(angleDiffRad) + (coord.y - centerY) * Math.cos(angleDiffRad) + centerY;
 
+    posX = Math.round(posX);
+    posY = Math.round(posY);
+
     // move screen B by swipe A
     posX += swipeA.x - clientA.width / 2;
     posY += swipeA.y - clientA.height / 2;
@@ -172,7 +181,7 @@ const updateRoomCanvas = (code) => {
 
     const { minX, minY, maxX, maxY } = getExtremeCoords(allCoords);
 
-    const shiftX = minX;                                                    // shift coords so that lowest value is origin
+    const shiftX = minX;                                                      // shift coords so that lowest value is origin
     const shiftY = minY;
 
     clients.forEach(client => {
@@ -187,7 +196,7 @@ const updateRoomCanvas = (code) => {
 }
 
 io.on('connection', socket => {
-    console.log(`Connection`);
+    console.log(`✅ connection`);
 
     socket.on(`connectToRoom`, (code, data) => {
         socket.join(code);
@@ -206,6 +215,7 @@ io.on('connection', socket => {
     })
 
     socket.on(`disconnect`, () => {
+        console.log(`❌ disconnection`);
         for (const code in rooms) {
             socket.leave(code);
             removeClientFromRoom(code, socket.id);

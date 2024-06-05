@@ -7,6 +7,7 @@ const $canvas = document.querySelector(`.canvas`);
 let socket;
 let roomCode;
 let roomHost = false;
+let isAnimating = false;
 const screenDimensions = { height: innerHeight, width: innerWidth };
 const canvas = { ctx: null, height: innerHeight, width: innerWidth };
 let square = { x: 50, y: 50, size: 50, dx: 2, dy: 2, fill: `black` };
@@ -33,6 +34,38 @@ const getExtremeCoords = (coords) => {
 
     return { minX, minY, maxX, maxY };
 }
+const positionCanvas = (rotation, coords) => {
+    const { minX, minY } = getExtremeCoords(coords);
+
+    $canvas.style.width = `${canvas.width}px`;
+    $canvas.style.height = `${canvas.height}px`;
+    $canvas.style.rotate = `${rotation}deg`;
+    document.querySelector(`.screenRotation`).textContent = rotation;
+    document.querySelector(`.screenPos`).textContent = `minX: ${minX}, minY: ${minY}`;
+
+    switch (rotation) {
+        case 0:
+            $canvas.style.left = `${-minX}px`
+            $canvas.style.top = `${-minY}px`;
+            break;
+        case 90:
+            $canvas.style.left = `${screenDimensions.width + minY}px`
+            $canvas.style.top = `${-minX}px`;
+            break;
+        case 180:
+            $canvas.style.left = `${screenDimensions.width + minX}px`
+            $canvas.style.top = `${screenDimensions.height + minY}px`;
+            break;
+        case 270:
+            $canvas.style.top = `${screenDimensions.height + minX}px`
+            $canvas.style.left = `${-minY}px`;
+            break;
+        default:
+            $canvas.style.left = `${-minX}px`
+            $canvas.style.top = `${-minY}px`;
+            break;
+    }
+}
 
 // ----- canvas ----- //
 const createCanvas = () => {
@@ -45,8 +78,18 @@ const createCanvas = () => {
     $canvas.style.height = `${canvas.height}px`;
 }
 const animateSquare = () => {
-    if (!roomHost) return
+    if (!roomHost) return;
+
     canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const gradient = canvas.ctx.createLinearGradient(0, 0, canvas.width, 0);
+    gradient.addColorStop(0, `white`);
+    gradient.addColorStop(0.25, `red`);
+    gradient.addColorStop(0.5, `blue`);
+    gradient.addColorStop(0.75, `green`);
+    gradient.addColorStop(1, `yellow`);
+    canvas.ctx.fillStyle = gradient;
+    canvas.ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     canvas.ctx.fillStyle = square.fill;
     canvas.ctx.fillRect(square.x, square.y, square.size, square.size);
@@ -64,19 +107,31 @@ const showSquare = () => {
     if (roomHost) return
     canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    const gradient = canvas.ctx.createLinearGradient(0, 0, canvas.width, 0);
+    gradient.addColorStop(0, `white`);
+    gradient.addColorStop(0.25, `red`);
+    gradient.addColorStop(0.5, `blue`);
+    gradient.addColorStop(0.75, `green`);
+    gradient.addColorStop(1, `yellow`);
+    canvas.ctx.fillStyle = gradient;
+    canvas.ctx.fillRect(0, 0, canvas.width, canvas.height);
+
     canvas.ctx.fillStyle = square.fill;
     canvas.ctx.fillRect(square.x, square.y, square.size, square.size);
 }
 
 const handleSwipe = e => {
-    const data = {
-        angle: e.angle,
-        x: e.center.x,
-        y: e.center.y
-    }
-
+    const data = { angle: e.angle, x: e.center.x, y: e.center.y }
     socket.emit('swipe', roomCode, data, Date.now());
 }
+
+const requestWakeLock = async () => {
+    try {
+        const wakeLock = await navigator.wakeLock.request('screen');
+    } catch (err) {
+        console.error(`${err.name}, ${err.message}`);
+    }
+};
 
 const init = () => {
     createCanvas();
@@ -122,17 +177,13 @@ const init = () => {
         canvas.height = room.canvas.height;
         createCanvas();
 
-        const { minX, minY } = getExtremeCoords(room.clients[socket.id].coords);
-
         console.log(room.clients[socket.id].coords);
-        $canvas.style.top = `${-minY}px`;
-        $canvas.style.left = `${-minX}px`;
-        $canvas.style.width = `${canvas.width}px`;
-        $canvas.style.height = `${canvas.height}px`;
+        positionCanvas(room.clients[socket.id].rotation, room.clients[socket.id].coords);
 
         if (room.host === socket.id) {
             roomHost = true;
-            animateSquare();
+            if (!isAnimating) animateSquare();
+            isAnimating = true;
         } else {
             roomHost = false;
         }
@@ -146,6 +197,7 @@ const init = () => {
     })
 
     animateSquare();
+    requestWakeLock();
 };
 
 init();
