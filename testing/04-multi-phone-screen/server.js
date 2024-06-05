@@ -15,6 +15,7 @@ const io = new Server(server);
 
 const port = 443;
 const rooms = {};
+const swipeEvents = [];
 
 app.use(express.static('public'))
 app.use('/node_modules', express.static('node_modules'));
@@ -48,7 +49,12 @@ io.on('connection', socket => {
         socket.join(code);
         addClientToRoom(code, socket.id);
         io.to(code).emit('room', rooms[code]);
-    })
+    });
+
+    socket.on('swipe', (code, data, timestamp) => {
+        const swipeEvent = { id: socket.id, code, data, timestamp };
+        swipeEvents.push(swipeEvent);
+    });
 
     socket.on(`disconnect`, () => {
         for (const code in rooms) {

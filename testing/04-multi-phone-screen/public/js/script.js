@@ -42,6 +42,20 @@ const animateSquare = () => {
     requestAnimationFrame(animateSquare);
 }
 
+const handleSwipe = e => {
+    const data = {
+        angle: e.angle,
+        x: e.center.x,
+        y: e.center.y,
+        velocityX: e.velocityX,
+        velocityY: e.velocityY
+    }
+
+    console.log(e);
+
+    socket.emit('swipe', roomCode, data, Date.now());
+}
+
 const init = () => {
     createCanvas();
 
@@ -75,6 +89,11 @@ const init = () => {
             }
         }
     })
+
+    // ----- hammer ----- //
+    const hammer = new Hammer($canvas);
+    hammer.get('swipe').set({ direction: Hammer.DIRECTION_ALL });
+    hammer.on('swipe', handleSwipe);
 
     animateSquare();
 };
