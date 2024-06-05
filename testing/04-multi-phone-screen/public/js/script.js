@@ -11,11 +11,27 @@ const screenDimensions = { height: innerHeight, width: innerWidth };
 const canvas = { ctx: null, height: innerHeight, width: innerWidth };
 let square = { x: 50, y: 50, size: 50, dx: 2, dy: 2, fill: `black` };
 
+// ----- calculation functions ----- //
 const getUrlParameter = (name) => {
     name = name.replace(/[\[]/, `\\[`).replace(/[\]]/, `\\]`);
     const regex = new RegExp(`[\\?&]` + name + `=([^&#]*)`);
     const results = regex.exec(location.search);
     return results === null ? false : decodeURIComponent(results[1].replace(/\+/g, ` `));
+}
+const getExtremeCoords = (coords) => {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    coords.forEach(coord => {
+        if (coord.x < minX) minX = coord.x;
+        if (coord.y < minY) minY = coord.y;
+        if (coord.x > maxX) maxX = coord.x;
+        if (coord.y > maxY) maxY = coord.y;
+    });
+
+    return { minX, minY, maxX, maxY };
 }
 
 // ----- canvas ----- //
@@ -56,9 +72,7 @@ const handleSwipe = e => {
     const data = {
         angle: e.angle,
         x: e.center.x,
-        y: e.center.y,
-        velocityX: e.velocityX,
-        velocityY: e.velocityY
+        y: e.center.y
     }
 
     socket.emit('swipe', roomCode, data, Date.now());
@@ -108,17 +122,11 @@ const init = () => {
         canvas.height = room.canvas.height;
         createCanvas();
 
-        let top = canvas.height;
-        let left = canvas.width;
-
-        room.clients[socket.id].coords.forEach(coord => {
-            if (coord.x < left) left = coord.x;
-            if (coord.y < top) top = coord.y;
-        });
+        const { minX, minY } = getExtremeCoords(room.clients[socket.id].coords);
 
         console.log(room.clients[socket.id].coords);
-        $canvas.style.top = `${-top}px`;
-        $canvas.style.left = `${-left}px`;
+        $canvas.style.top = `${-minY}px`;
+        $canvas.style.left = `${-minX}px`;
         $canvas.style.width = `${canvas.width}px`;
         $canvas.style.height = `${canvas.height}px`;
 

@@ -11,6 +11,8 @@ const options = {
 
 const server = https.createServer(options, app);
 const { Server } = require("socket.io");
+const { inflate } = require('zlib');
+const { log } = require('console');
 const io = new Server(server);
 
 const port = 443;
@@ -43,6 +45,21 @@ const getScreenCoord = (i, screen) => {
         case 3: return { x: 0, y: screen.height };                            // Bottom-left
         default: return { x: 0, y: 0 };
     }
+}
+const getExtremeCoords = (coords) => {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    coords.forEach(coord => {
+        if (coord.x < minX) minX = coord.x;
+        if (coord.y < minY) minY = coord.y;
+        if (coord.x > maxX) maxX = coord.x;
+        if (coord.y > maxY) maxY = coord.y;
+    });
+
+    return { minX, minY, maxX, maxY };
 }
 
 // ----- socket room ----- //
@@ -82,6 +99,7 @@ const calculateSimultaneousSwipes = (code, latestSwipeEvent) => {
         return swipeEvent.code === code && swipeEvent.id !== latestSwipeEvent.id;
     });
 
+
     if (roomSwipeEvents.length > 0) {
         for (let i = 0; i < roomSwipeEvents.length; i++) {
             const timeDifference = Math.abs(roomSwipeEvents[i].timestamp - latestSwipeEvent.timestamp);
@@ -118,13 +136,17 @@ const calculateRelCoords = (coord, angleDiff, clientA, clientB, swipeA, swipeB) 
     const centerY = clientB.height / 2;
     const angleDiffRad = angleDiff * (Math.PI / 180);                         // rad
 
+    const { minX, minY } = getExtremeCoords(clientA.coords);
+    let posX = minX;
+    let posY = minY;
+
     // rotate screen B
-    let posX = (coord.x - centerX) * Math.cos(angleDiffRad) - (coord.y - centerY) * Math.sin(angleDiffRad) + centerX;
-    let posY = (coord.x - centerX) * Math.sin(angleDiffRad) + (coord.y - centerY) * Math.cos(angleDiffRad) + centerY;
+    posX += (coord.x - centerX) * Math.cos(angleDiffRad) - (coord.y - centerY) * Math.sin(angleDiffRad) + centerX;
+    posY += (coord.x - centerX) * Math.sin(angleDiffRad) + (coord.y - centerY) * Math.cos(angleDiffRad) + centerY;
 
     // move screen B by swipe A
-    posX = posX + swipeA.x - clientA.width / 2;
-    posY = posY + swipeA.y - clientA.height / 2;
+    posX += swipeA.x - clientA.width / 2;
+    posY += swipeA.y - clientA.height / 2;
 
     // // move screen B by swipe B
     const deltaX = swipeB.x - centerX;
@@ -143,20 +165,13 @@ const updateRoomCanvas = (code) => {
     const clients = Object.values(rooms[code].clients);
     if (clients.length === 0) return;
 
-    let minX = 0;
-    let minY = 0;
-    let maxX = rooms[code].canvas.width;
-    let maxY = rooms[code].canvas.height;
-
+    let allCoords = [];
     clients.forEach(client => {
-        client.coords.forEach(coord => {
-            if (coord.x < minX) minX = coord.x;
-            if (coord.y < minY) minY = coord.y;
-            if (coord.x > maxX) maxX = coord.x;
-            if (coord.y > maxY) maxY = coord.y;
-        });
+        allCoords.push(...client.coords);
     });
-    
+
+    const { minX, minY, maxX, maxY } = getExtremeCoords(allCoords);
+
     const shiftX = minX;                                                    // shift coords so that lowest value is origin
     const shiftY = minY;
 
