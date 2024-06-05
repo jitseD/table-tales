@@ -15,7 +15,8 @@ const io = new Server(server);
 
 const port = 443;
 const rooms = {};
-const swipeEvents = [];
+let swipeEvents = [];
+const timestampThreshold = 3000;
 
 app.use(express.static('public'))
 app.use('/node_modules', express.static('node_modules'));
@@ -42,6 +43,29 @@ const removeClientFromRoom = (code, clientId) => {
     }
 }
 
+// ----- swipe connecting ----- //
+const calculateSimultaneousSwipes = (code, latestSwipeEvent) => {
+    swipeEvents = swipeEvents.filter(swipeEvent => {
+        const timeDifferenceNow = Math.abs(swipeEvent.timestamp - Date.now());
+        return timeDifferenceNow <= timestampThreshold;
+    });
+
+    const roomSwipeEvents = swipeEvents.filter(swipeEvent => {
+        return swipeEvent.code === code && swipeEvent.id !== latestSwipeEvent.id;
+    });
+
+    if (roomSwipeEvents.length > 0) {
+        for (let i = 0; i < roomSwipeEvents.length; i++) {
+            const timeDifference = Math.abs(roomSwipeEvents[i].timestamp - latestSwipeEvent.timestamp);
+            if (timeDifference <= timestampThreshold) {
+                console.log(`simultaneous swipes`);
+            }
+        }
+    }
+
+    swipeEvents.push(latestSwipeEvent)
+};
+
 io.on('connection', socket => {
     console.log(`Connection`);
 
@@ -53,7 +77,7 @@ io.on('connection', socket => {
 
     socket.on('swipe', (code, data, timestamp) => {
         const swipeEvent = { id: socket.id, code, data, timestamp };
-        swipeEvents.push(swipeEvent);
+        calculateSimultaneousSwipes(code, swipeEvent);
     });
 
     socket.on(`disconnect`, () => {
