@@ -156,7 +156,7 @@ const updateRoomCanvas = (code) => {
             if (coord.y > maxY) maxY = coord.y;
         });
     });
-
+    
     const shiftX = minX;                                                    // shift coords so that lowest value is origin
     const shiftY = minY;
 
@@ -168,7 +168,7 @@ const updateRoomCanvas = (code) => {
     });
 
     rooms[code].canvas = { width: maxX - minX, height: maxY - minY };
-    console.log(rooms[code].canvas);
+    io.to(code).emit(`updateCanvas`, rooms[code]);
 }
 
 io.on('connection', socket => {
@@ -185,6 +185,10 @@ io.on('connection', socket => {
         const swipeEvent = { id: socket.id, code, data, timestamp };
         calculateSimultaneousSwipes(code, swipeEvent);
     });
+
+    socket.on(`showSquare`, (code, square) => {
+        io.to(code).emit(`showSquare`, square);
+    })
 
     socket.on(`disconnect`, () => {
         for (const code in rooms) {

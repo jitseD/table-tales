@@ -6,6 +6,7 @@ const $canvas = document.querySelector(`.canvas`);
 
 let socket;
 let roomCode;
+let roomHost = false;
 const screenDimensions = { height: innerHeight, width: innerWidth };
 const canvas = { ctx: null, height: innerHeight, width: innerWidth };
 let square = { x: 50, y: 50, size: 50, dx: 2, dy: 2, fill: `black` };
@@ -28,6 +29,7 @@ const createCanvas = () => {
     $canvas.style.height = `${canvas.height}px`;
 }
 const animateSquare = () => {
+    if (!roomHost) return
     canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     canvas.ctx.fillStyle = square.fill;
@@ -39,7 +41,15 @@ const animateSquare = () => {
     if (square.x + square.size > canvas.width || square.x < 0) square.dx *= -1;
     if (square.y + square.size > canvas.height || square.y < 0) square.dy *= -1;
 
+    socket.emit(`showSquare`, roomCode, square);
     requestAnimationFrame(animateSquare);
+}
+const showSquare = () => {
+    if (roomHost) return
+    canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    canvas.ctx.fillStyle = square.fill;
+    canvas.ctx.fillRect(square.x, square.y, square.size, square.size);
 }
 
 const handleSwipe = e => {
@@ -50,8 +60,6 @@ const handleSwipe = e => {
         velocityX: e.velocityX,
         velocityY: e.velocityY
     }
-
-    console.log(e);
 
     socket.emit('swipe', roomCode, data, Date.now());
 }
@@ -75,7 +83,6 @@ const init = () => {
             $isHost.textContent = `I am NOT the room host`;
         }
 
-        console.log(room);
         const clientIds = Object.keys(room.clients);
         $otherIds.innerHTML = ``;
         for (const otherSocetId in clientIds) {
@@ -94,6 +101,41 @@ const init = () => {
     const hammer = new Hammer($canvas);
     hammer.get('swipe').set({ direction: Hammer.DIRECTION_ALL });
     hammer.on('swipe', handleSwipe);
+
+    // ----- update canvas ----- //
+    socket.on(`updateCanvas`, (room) => {
+        canvas.width = room.canvas.width;
+        canvas.height = room.canvas.height;
+        createCanvas();
+
+        let top = canvas.height;
+        let left = canvas.width;
+
+        room.clients[socket.id].coords.forEach(coord => {
+            if (coord.x < left) left = coord.x;
+            if (coord.y < top) top = coord.y;
+        });
+
+        console.log(room.clients[socket.id].coords);
+        $canvas.style.top = `${-top}px`;
+        $canvas.style.left = `${-left}px`;
+        $canvas.style.width = `${canvas.width}px`;
+        $canvas.style.height = `${canvas.height}px`;
+
+        if (room.host === socket.id) {
+            roomHost = true;
+            animateSquare();
+        } else {
+            roomHost = false;
+        }
+    })
+
+    socket.on(`showSquare`, (data) => {
+        if (!roomHost) {
+            square = data;
+            showSquare();
+        }
+    })
 
     animateSquare();
 };
