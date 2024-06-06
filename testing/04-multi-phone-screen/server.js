@@ -59,10 +59,6 @@ const getExtremeCoords = (coords) => {
 
     return { minX, minY, maxX, maxY };
 }
-const getScreenRotation = (startRotation, rotation) => {
-    const screenRotation = (rotation + startRotation + 180) % 360;
-    return screenRotation;
-}
 
 // ----- socket room ----- //
 const addClientToRoom = (code, client) => {
@@ -112,8 +108,7 @@ const calculateSimultaneousSwipes = (code, latestSwipeEvent) => {
                 if (clientA && clientB) {
                     const relPos = calculateRelPos(clientA, clientB, swipeEvents[i].data, latestSwipeEvent.data);
                     rooms[code].clients[latestSwipeEvent.id].coords = relPos.coords;
-                    const screenRotation = getScreenRotation(clientA.rotation, relPos.rotation);
-                    rooms[code].clients[latestSwipeEvent.id].rotation = screenRotation;
+                    rooms[code].clients[latestSwipeEvent.id].rotation = (relPos.rotation + clientA.rotation + 180) % 360;;
                     updateRoomCanvas(code);
 
                     swipeEvents.splice(swipeEvents.indexOf(roomSwipeEvents[i]), 1);
@@ -131,41 +126,56 @@ const calculateRelPos = (clientA, clientB, swipeA, swipeB) => {
 
     for (let i = 0; i < 4; i++) {
         const coord = getScreenCoord(i, clientB);
-        const relCoordinate = calculateRelCoords(coord, angleDiff, clientA, clientB, swipeA, swipeB);
-        coords.push(relCoordinate);
+        const relCoord = calculateRelCoords(coord, angleDiff, clientA, clientB, swipeA, swipeB);
+        coords.push(relCoord);
     }
 
     return { coords, rotation: angleDiff };
 }
 const calculateRelCoords = (coord, angleDiff, clientA, clientB, swipeA, swipeB) => {
-    const centerX = clientB.width / 2;
-    const centerY = clientB.height / 2;
-    const angleDiffRad = angleDiff * (Math.PI / 180);                         // rad
-
     const { minX, minY } = getExtremeCoords(clientA.coords);
-    let posX = minX;
-    let posY = minY;
+    const centerAX = minX + clientA.width / 2;
+    const centerAY = minY + clientA.height / 2;
+    const centerBX = clientB.width / 2;
+    const centerBY = clientB.height / 2;
+
+    const angleDiffRad = (angleDiff - clientA.rotation) * (Math.PI / 180);                         // rad
 
     // rotate screen B
-    posX += (coord.x - centerX) * Math.cos(angleDiffRad) - (coord.y - centerY) * Math.sin(angleDiffRad) + centerX;
-    posY += (coord.x - centerX) * Math.sin(angleDiffRad) + (coord.y - centerY) * Math.cos(angleDiffRad) + centerY;
+    let posX = (coord.x - centerBX) * Math.cos(angleDiffRad) - (coord.y - centerBY) * Math.sin(angleDiffRad) + centerBX;
+    let posY = (coord.x - centerBX) * Math.sin(angleDiffRad) + (coord.y - centerBY) * Math.cos(angleDiffRad) + centerBY;
 
     posX = Math.round(posX);
     posY = Math.round(posY);
 
+    // align to center of screen A
+    posX += centerAX - centerBX;
+    posY += centerAY - centerBY;
+
     // move screen B by swipe A
-    posX += swipeA.x - clientA.width / 2;
-    posY += swipeA.y - clientA.height / 2;
+    const deltaAX = swipeA.x - clientA.width / 2
+    const deltaAY = swipeA.y - clientA.height / 2;
+
+    switch (clientA.rotation) {
+        case 90: posX += deltaAY; posY -= deltaAX; break;
+        case 180: posX -= deltaAX; posY -= deltaAY; break;
+        case 270: posX -= deltaAY; posY += deltaAX; break;
+        default: posX += deltaAX; posY += deltaAY; break;
+    }
+
+    posX += deltaAX;
+    posY += deltaAY
 
     // // move screen B by swipe B
-    const deltaX = swipeB.x - centerX;
-    const deltaY = swipeB.y - centerY;
+    const deltaBX = swipeB.x - centerBX;
+    const deltaBY = swipeB.y - centerBY;
 
-    switch (angleDiff) {
-        case 90: return { x: posX + deltaY, y: posY - deltaX };
-        case 180: return { x: posX - deltaX, y: posY - deltaY };
-        case 270: return { x: posX - deltaY, y: posY + deltaX };
-        default: return { x: posX + deltaX, y: posY + deltaY };
+
+    switch (angleDiff + clientA.rotation) {
+        case 90: return { x: posX + deltaBY, y: posY - deltaBX };
+        case 180: return { x: posX - deltaBX, y: posY - deltaBY };
+        case 270: return { x: posX - deltaBY, y: posY + deltaBX };
+        default: return { x: posX + deltaBX, y: posY + deltaBY };
     }
 }
 

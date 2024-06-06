@@ -35,13 +35,13 @@ const getExtremeCoords = (coords) => {
     return { minX, minY, maxX, maxY };
 }
 const positionCanvas = (rotation, coords) => {
-    const { minX, minY } = getExtremeCoords(coords);
+    const { minX, minY, maxX, maxY } = getExtremeCoords(coords);
 
     $canvas.style.width = `${canvas.width}px`;
     $canvas.style.height = `${canvas.height}px`;
     $canvas.style.rotate = `${rotation}deg`;
     document.querySelector(`.screenRotation`).textContent = rotation;
-    document.querySelector(`.screenPos`).textContent = `minX: ${minX}, minY: ${minY}`;
+    document.querySelector(`.screenPos`).textContent = `minX: ${minX}, minY: ${minY}, maxX: ${maxX}, maxY: ${maxY}`;
 
     switch (rotation) {
         case 0:
