@@ -8,7 +8,8 @@ let socket;
 let roomCode;
 let roomHost = false;
 let isAnimating = false;
-let allCoords;
+let myCoords;
+let otherCoords;
 const screenDimensions = { height: innerHeight, width: innerWidth };
 const canvas = { ctx: null, height: innerHeight, width: innerWidth };
 let square = { x: 50, y: 50, size: 50, dx: 2, dy: 2, fill: `black` };
@@ -81,7 +82,7 @@ const createCanvas = () => {
 const animateSquare = () => {
     if (!roomHost) return;
     canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
+
     const gradient = canvas.ctx.createLinearGradient(0, 0, canvas.width, 0);
     gradient.addColorStop(0, `white`);
     gradient.addColorStop(0.25, `red`);
@@ -90,25 +91,25 @@ const animateSquare = () => {
     gradient.addColorStop(1, `yellow`);
     canvas.ctx.fillStyle = gradient;
     canvas.ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
+
     canvas.ctx.fillStyle = square.fill;
     canvas.ctx.fillRect(square.x, square.y, square.size, square.size);
-    
+
     square.x += square.dx;
     square.y += square.dy;
-    
+
     if (square.x + square.size > canvas.width || square.x < 0) square.dx *= -1;
     if (square.y + square.size > canvas.height || square.y < 0) square.dy *= -1;
-    
+
     socket.emit(`showSquare`, roomCode, square);
+
+    showConnectionLines();
     requestAnimationFrame(animateSquare);
-    
-    showConnectedSides(allCoords);
 }
 const showSquare = () => {
     if (roomHost) return
     canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
+
     const gradient = canvas.ctx.createLinearGradient(0, 0, canvas.width, 0);
     gradient.addColorStop(0, `white`);
     gradient.addColorStop(0.25, `red`);
@@ -117,23 +118,59 @@ const showSquare = () => {
     gradient.addColorStop(1, `yellow`);
     canvas.ctx.fillStyle = gradient;
     canvas.ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
+
     canvas.ctx.fillStyle = square.fill;
     canvas.ctx.fillRect(square.x, square.y, square.size, square.size);
-    
-        showConnectedSides(allCoords);
-}
-const showConnectedSides = (coords) => {
-    const padding = 10;
-    for (let i = 0; i < coords.length; i++) {
-        const { minX, minY, maxX, maxY } = getExtremeCoords(coords[i]);
-        console.log(minX, minY, maxX - minX, maxY - minY);
 
-        canvas.ctx.strokeStyle = `red`;
-        canvas.ctx.lineWidth = padding;
-        canvas.ctx.strokeRect(minX - padding, minY - padding, maxX - minX + padding, maxY - minY + padding);
-    }
+    showConnectionLines();
 }
+
+// ----- side connections ----- //
+const showConnectionLines = () => {
+    const connectionLines = [];
+    const screenA = getExtremeCoords(myCoords);
+
+    for (let i = 0; i < otherCoords.length; i++) {
+        const screenB = getExtremeCoords(otherCoords[i]);
+
+        const line = getConnectionLine(screenA, screenB);
+        if (line) connectionLines.push(line);
+    }
+
+    connectionLines.forEach(line => {
+        canvas.ctx.strokeStyle = `black`;
+        canvas.ctx.lineWidth = 20;
+        canvas.ctx.beginPath();
+        canvas.ctx.moveTo(line.x1, line.y1);
+        canvas.ctx.lineTo(line.x2, line.y2);
+        canvas.ctx.stroke();
+    });
+};
+const getConnectionLine = (screenA, screenB) => {
+    const tolerance = 50;
+
+    if (Math.abs(screenA.minX - screenB.maxX) <= tolerance) return {            // leftArightB
+        x1: screenA.minX, y1: Math.max(screenA.minY, screenB.minY),
+        x2: screenA.minX, y2: Math.min(screenA.maxY, screenB.maxY)
+    }
+
+    if (Math.abs(screenA.maxX - screenB.minX) <= tolerance) return {            // rightAleftB
+        x1: screenA.maxX, y1: Math.max(screenA.minY, screenB.minY),
+        x2: screenA.maxX, y2: Math.min(screenA.maxY, screenB.maxY)
+    }
+
+    if (Math.abs(screenA.minY - screenB.maxY) <= tolerance) return {            // topAbottomB
+        x1: Math.max(screenA.minX, screenB.minX), y1: screenA.minY,
+        x2: Math.min(screenA.maxX, screenB.maxX), y2: screenA.minY
+    }
+
+    if (Math.abs(screenA.maxY - screenB.minY) <= tolerance) return {            //bottomAtopB
+        x1: Math.max(screenA.minX, screenB.minX), y1: screenA.maxY,
+        x2: Math.min(screenA.maxX, screenB.maxX), y2: screenA.maxY
+    }
+
+    return null;
+};
 
 const handleSwipe = e => {
     const data = { angle: e.angle, x: e.center.x, y: e.center.y }
@@ -188,14 +225,17 @@ const init = () => {
 
     // ----- update canvas ----- //
     socket.on(`updateCanvas`, (room) => {
-        allCoords = Object.values(room.clients).map(client => client.coords);
+        otherCoords = [];
+        Object.values(room.clients).map((client) => {
+            if (client.id === socket.id) myCoords = client.coords;
+            else return otherCoords.push(client.coords);
+        });
 
         canvas.width = room.canvas.width;
         canvas.height = room.canvas.height;
         createCanvas();
 
-        console.log(room.clients[socket.id].coords);
-        positionCanvas(room.clients[socket.id].rotation, room.clients[socket.id].coords);
+        positionCanvas(room.clients[socket.id].rotation, myCoords);
 
         if (room.host === socket.id) {
             roomHost = true;
