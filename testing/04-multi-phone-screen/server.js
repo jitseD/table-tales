@@ -163,13 +163,9 @@ const calculateRelCoords = (coord, angleDiff, clientA, clientB, swipeA, swipeB) 
         default: posX += deltaAX; posY += deltaAY; break;
     }
 
-    posX += deltaAX;
-    posY += deltaAY
-
     // // move screen B by swipe B
     const deltaBX = swipeB.x - centerBX;
     const deltaBY = swipeB.y - centerBY;
-
 
     switch (angleDiff + clientA.rotation) {
         case 90: return { x: posX + deltaBY, y: posY - deltaBX };
@@ -184,7 +180,7 @@ const updateRoomCanvas = (code) => {
     const clients = Object.values(rooms[code].clients);
     if (clients.length === 0) return;
 
-    let allCoords = [];
+    const allCoords = [];
     clients.forEach(client => {
         allCoords.push(...client.coords);
     });

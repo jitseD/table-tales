@@ -8,6 +8,7 @@ let socket;
 let roomCode;
 let roomHost = false;
 let isAnimating = false;
+let allCoords;
 const screenDimensions = { height: innerHeight, width: innerWidth };
 const canvas = { ctx: null, height: innerHeight, width: innerWidth };
 let square = { x: 50, y: 50, size: 50, dx: 2, dy: 2, fill: `black` };
@@ -79,9 +80,8 @@ const createCanvas = () => {
 }
 const animateSquare = () => {
     if (!roomHost) return;
-
     canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+    
     const gradient = canvas.ctx.createLinearGradient(0, 0, canvas.width, 0);
     gradient.addColorStop(0, `white`);
     gradient.addColorStop(0.25, `red`);
@@ -90,23 +90,25 @@ const animateSquare = () => {
     gradient.addColorStop(1, `yellow`);
     canvas.ctx.fillStyle = gradient;
     canvas.ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+    
     canvas.ctx.fillStyle = square.fill;
     canvas.ctx.fillRect(square.x, square.y, square.size, square.size);
-
+    
     square.x += square.dx;
     square.y += square.dy;
-
+    
     if (square.x + square.size > canvas.width || square.x < 0) square.dx *= -1;
     if (square.y + square.size > canvas.height || square.y < 0) square.dy *= -1;
-
+    
     socket.emit(`showSquare`, roomCode, square);
     requestAnimationFrame(animateSquare);
+    
+    showConnectedSides(allCoords);
 }
 const showSquare = () => {
     if (roomHost) return
     canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+    
     const gradient = canvas.ctx.createLinearGradient(0, 0, canvas.width, 0);
     gradient.addColorStop(0, `white`);
     gradient.addColorStop(0.25, `red`);
@@ -115,9 +117,22 @@ const showSquare = () => {
     gradient.addColorStop(1, `yellow`);
     canvas.ctx.fillStyle = gradient;
     canvas.ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+    
     canvas.ctx.fillStyle = square.fill;
     canvas.ctx.fillRect(square.x, square.y, square.size, square.size);
+    
+        showConnectedSides(allCoords);
+}
+const showConnectedSides = (coords) => {
+    const padding = 10;
+    for (let i = 0; i < coords.length; i++) {
+        const { minX, minY, maxX, maxY } = getExtremeCoords(coords[i]);
+        console.log(minX, minY, maxX - minX, maxY - minY);
+
+        canvas.ctx.strokeStyle = `red`;
+        canvas.ctx.lineWidth = padding;
+        canvas.ctx.strokeRect(minX - padding, minY - padding, maxX - minX + padding, maxY - minY + padding);
+    }
 }
 
 const handleSwipe = e => {
@@ -173,6 +188,8 @@ const init = () => {
 
     // ----- update canvas ----- //
     socket.on(`updateCanvas`, (room) => {
+        allCoords = Object.values(room.clients).map(client => client.coords);
+
         canvas.width = room.canvas.width;
         canvas.height = room.canvas.height;
         createCanvas();
@@ -196,7 +213,6 @@ const init = () => {
         }
     })
 
-    animateSquare();
     requestWakeLock();
 };
 
