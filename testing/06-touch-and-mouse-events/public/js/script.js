@@ -13,6 +13,13 @@ const $canvas = document.querySelector(`.canvas`);
 let socket;
 let roomCode;
 let roomHost = false;
+const swipe = {
+    start: { x: null, y: null },
+    end: { x: null, y: null },
+    angle: null,
+    isSwiping: false,
+    isMouseDown: false,
+}
 const screenDimensions = { height: innerHeight, width: innerWidth };
 const canvas = { ctx: null, height: innerHeight, width: innerWidth };
 let square = { x: 50, y: 50, size: 50, dx: 2, dy: 2, fill: `black` };
@@ -90,19 +97,47 @@ const danceFormSubmitHandle = e => {
     })
 }
 
+// ----- mouse events ----- //
+const handleMouseDown = e => {
+    swipe.start = { x: e.clientX, y: e.clientY }
+    swipe.isMouseDown = true;
+}
+const handleMouseMove = e => {
+    if (!swipe.isMouseDown) return;
+    swipe.isSwiping = true;
+}
+const handleMouseUp = e => {
+    swipe.isMouseDown = false;
+    if (!swipe.isSwiping) return;
+
+    swipe.end = { x: e.clientX, y: e.clientY }
+
+    determineSwipeAngle();
+    handleSwipe();
+
+    swipe.isSwiping = false;
+}
+
 // ----- swipe ----- //
-const handleSwipe = e => {
-    const data = {
-        angle: e.angle,
-        x: e.center.x,
-        y: e.center.y,
-        velocityX: e.velocityX,
-        velocityY: e.velocityY
+const determineSwipeAngle = () => {
+    const deltaX = swipe.end.x - swipe.start.x;
+    const deltaY = swipe.end.y - swipe.start.y;
+
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {                      // horizontal
+        if (deltaX > 0) return swipe.angle = 0;
+        else return swipe.angle = 180;
+    } else {                                                        // vertical
+        if (deltaY > 0) return swipe.angle = 90
+        else return swipe.angle = 270;
     }
-
-    console.log(e);
-
+}
+const handleSwipe = () => {
+    
+    const data = { x: swipe.end.x, y: swipe.end.y, angle: swipe.angle };
+    console.log('Swiped in direction:', data);
+    
     socket.emit('swipe', roomCode, data, Date.now());
+    document.querySelector(`.swipe`).textContent = `x: ${swipe.end.x}, y: ${swipe.end.y}, a: ${swipe.angle}`
 }
 
 const init = () => {
@@ -156,7 +191,7 @@ const init = () => {
         }
     })
 
-    socket.on(`showSquare`, (data)=>{
+    socket.on(`showSquare`, (data) => {
         if (!roomHost) {
             square = data;
             showSquare();
@@ -168,10 +203,10 @@ const init = () => {
     $joinDance.addEventListener(`click`, joinDanceHandle);
     $danceForm.addEventListener(`submit`, danceFormSubmitHandle);
 
-    // ----- hammer ----- //
-    const hammer = new Hammer($canvas);
-    hammer.get('swipe').set({ direction: Hammer.DIRECTION_ALL });
-    hammer.on('swipe', handleSwipe);
+    // ----- mouse events ----- //
+    $canvas.addEventListener('mousedown', handleMouseDown);
+    $canvas.addEventListener('mousemove', handleMouseMove);
+    $canvas.addEventListener('mouseup', handleMouseUp);
 };
 
 init();

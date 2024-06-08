@@ -86,7 +86,7 @@ const removeClientFromRoom = (code, clientId) => {
 // ----- swipe connecting ----- //
 const calculateSimultaneousSwipes = (code, latestSwipeEvent) => {
     swipeEvents = swipeEvents.filter(swipeEvent => {
-        const timeDifferenceNow = Math.abs(swipeEvent.timestamp - Date.now());
+        const timeDifferenceNow = Math.abs(swipeEvent.timestamp - latestSwipeEvent.timestamp);
         return timeDifferenceNow <= timestampThreshold;
     });
 
