@@ -6,13 +6,6 @@ video {
     width: 100%;
 }
 
-div {
-    border: 0.2px solid black;
-    display: flex;
-    flex-direction: column;
-    padding: 1rem;
-}
-
 @keyframes backgroundAnimation {
     0% {
         background-color: white;
