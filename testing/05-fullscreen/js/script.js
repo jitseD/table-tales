@@ -22,22 +22,39 @@ const isFullscreen = () => {
 };
 
 const toggleFullscreen = () => {
-    const element = document.documentElement;
-
-    if (!isFullscreen()) {
-        element.requestFullscreen().catch(e => {
-            console.error(e);
-        })
-        $fullscreenAction.textContent = `exit`;
-    } else {
-        document.exitFullscreen();
-        $fullscreenAction.textContent = `go`;
-    }
+    if (isFullscreen()) exitFullscreen();
+    else enterFullscreen();
 }
 
+const enterFullscreen = () => {
+    const element = document.documentElement;
+
+    if (element.requestFullscreen) element.requestFullscreen();
+    else if (element.webkitRequestFullscreen) element.webkitRequestFullscreen();
+    else if (element.mozRequestFullScreen) element.mozRequestFullScreen();
+    else if (element.msRequestFullscreen) element.msRequestFullscreen();
+};
+
+const exitFullscreen = () => {
+    if (document.exitFullscreen) document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+    else if (document.msExitFullscreen) document.msExitFullscreen();
+};
+
+const handleFullscreenChange = () => {
+    $fullscreenAction.textContent = isFullscreen() ? 'exit' : 'go';
+};
+
 const init = () => {
-    if (isFullscreenSupported()) document.addEventListener(`dblclick`, toggleFullscreen);
-    else fullscreenNotSupported();
+    if (!isFullscreenSupported()) return fullscreenNotSupported();
+
+    document.addEventListener(`dblclick`, toggleFullscreen)
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
 }
 
 init();
