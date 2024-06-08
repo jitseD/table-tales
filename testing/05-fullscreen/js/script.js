@@ -1,10 +1,30 @@
 const $fullscreenAction = document.querySelector(`.fullscreen__action`);
-let fullscreen = false;
+const $supported = document.querySelector(`.supported`);
+const $notSupported = document.querySelector(`.notSupported`);
+
+const isFullscreenSupported = () => {
+    return document.fullscreenEnabled
+        || document.webkitFullscreenEnabled
+        || document.mozFullScreenEnabled
+        || document.msFullscreenEnabled;
+};
+
+const fullscreenNotSupported = () => {
+    $supported.classList.add(`hide`);
+    $notSupported.classList.remove(`hide`);
+}
+
+const isFullscreen = () => {
+    return document.fullscreenElement
+        || document.webkitFullscreenElement
+        || document.mozFullScreenElement
+        || document.msFullscreenElement;
+};
 
 const toggleFullscreen = () => {
     const element = document.documentElement;
 
-    if (!fullscreen) {
+    if (!isFullscreen()) {
         element.requestFullscreen().catch(e => {
             console.error(e);
         })
@@ -13,12 +33,11 @@ const toggleFullscreen = () => {
         document.exitFullscreen();
         $fullscreenAction.textContent = `go`;
     }
-
-    fullscreen = !fullscreen;
 }
 
 const init = () => {
-    document.addEventListener(`dblclick`, toggleFullscreen);
+    if (isFullscreenSupported()) document.addEventListener(`dblclick`, toggleFullscreen);
+    else fullscreenNotSupported();
 }
 
 init();
