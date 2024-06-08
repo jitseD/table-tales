@@ -118,6 +118,24 @@ const handleMouseUp = e => {
     swipe.isSwiping = false;
 }
 
+// ----- touch events ----- //
+const handleTouchStart = e => {
+    swipe.start = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+}
+const handleTouchMove = e => {
+    swipe.isSwiping = true;
+}
+const handleTouchEnd = e => {
+    if (!swipe.isSwiping) return;
+
+    swipe.end = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY }
+
+    determineSwipeAngle();
+    handleSwipe();
+
+    swipe.isSwiping = false;
+}
+
 // ----- swipe ----- //
 const determineSwipeAngle = () => {
     const deltaX = swipe.end.x - swipe.start.x;
@@ -132,12 +150,12 @@ const determineSwipeAngle = () => {
     }
 }
 const handleSwipe = () => {
-    
+    document.querySelector(`.swipe`).textContent = `x: ${swipe.end.x}, y: ${swipe.end.y}, a: ${swipe.angle}`
+
     const data = { x: swipe.end.x, y: swipe.end.y, angle: swipe.angle };
     console.log('Swiped in direction:', data);
-    
+
     socket.emit('swipe', roomCode, data, Date.now());
-    document.querySelector(`.swipe`).textContent = `x: ${swipe.end.x}, y: ${swipe.end.y}, a: ${swipe.angle}`
 }
 
 const init = () => {
@@ -207,6 +225,11 @@ const init = () => {
     $canvas.addEventListener('mousedown', handleMouseDown);
     $canvas.addEventListener('mousemove', handleMouseMove);
     $canvas.addEventListener('mouseup', handleMouseUp);
+
+    // ----- touch events ----- //
+    $canvas.addEventListener('touchstart', handleTouchStart);
+    $canvas.addEventListener('touchmove', handleTouchMove);
+    $canvas.addEventListener('touchend', handleTouchEnd);
 };
 
 init();
