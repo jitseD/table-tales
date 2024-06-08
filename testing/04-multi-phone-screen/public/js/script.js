@@ -1,6 +1,7 @@
 const $myId = document.querySelector(`.my__id`);
 const $roomCode = document.querySelector(`.room__code`);
 const $isHost = document.querySelector(`.is__host`);
+const $swipe = document.querySelector(`.swipe`);
 const $otherIds = document.querySelector(`.other__ids`);
 const $canvas = document.querySelector(`.canvas`);
 
@@ -10,6 +11,7 @@ let roomHost = false;
 let isAnimating = false;
 let myCoords;
 let otherCoords;
+let animationFrameId;
 const screenDimensions = { height: innerHeight, width: innerWidth };
 const canvas = { ctx: null, height: innerHeight, width: innerWidth };
 let square = { x: 50, y: 50, size: 50, dx: 2, dy: 2, fill: `black` };
@@ -79,8 +81,11 @@ const createCanvas = () => {
     $canvas.style.width = `${canvas.width}px`;
     $canvas.style.height = `${canvas.height}px`;
 }
-const animateSquare = () => {
-    if (!roomHost) return;
+
+let lastTimeSent = 0;
+const animateSquare = (time) => {
+    // if (!roomHost) return;
+
     canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const gradient = canvas.ctx.createLinearGradient(0, 0, canvas.width, 0);
@@ -101,10 +106,14 @@ const animateSquare = () => {
     if (square.x + square.size > canvas.width || square.x < 0) square.dx *= -1;
     if (square.y + square.size > canvas.height || square.y < 0) square.dy *= -1;
 
-    socket.emit(`showSquare`, roomCode, square);
+    const diff = time - lastTimeSent;
+    if (diff > 1000) {
+        lastTimeSent = time;
+        socket.emit(`showSquare`, roomCode, square);
+    }
 
     showConnectionLines();
-    requestAnimationFrame(animateSquare);
+    animationFrameId = requestAnimationFrame(animateSquare);
 }
 const showSquare = () => {
     if (roomHost) return
@@ -173,6 +182,7 @@ const getConnectionLine = (screenA, screenB) => {
 };
 
 const handleSwipe = e => {
+    $swipe.textContent = `swiped`;
     const data = { angle: e.angle, x: e.center.x, y: e.center.y }
     socket.emit('swipe', roomCode, data, Date.now());
 }
@@ -237,9 +247,10 @@ const init = () => {
 
         positionCanvas(room.clients[socket.id].rotation, myCoords);
 
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
         if (room.host === socket.id) {
             roomHost = true;
-            if (!isAnimating) animateSquare();
+            animationFrameId = requestAnimationFrame(animateSquare);
             isAnimating = true;
         } else {
             roomHost = false;
@@ -249,7 +260,8 @@ const init = () => {
     socket.on(`showSquare`, (data) => {
         if (!roomHost) {
             square = data;
-            showSquare();
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            animationFrameId = requestAnimationFrame(animateSquare);
         }
     })
 

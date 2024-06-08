@@ -89,14 +89,17 @@ const removeClientFromRoom = (code, clientId) => {
 
 // ----- swipe connecting ----- //
 const calculateSimultaneousSwipes = (code, latestSwipeEvent) => {
+    console.log(`-----`);
     swipeEvents = swipeEvents.filter(swipeEvent => {
-        const timeDifferenceNow = Math.abs(swipeEvent.timestamp - Date.now());
+        const timeDifferenceNow = Math.abs(swipeEvent.timestamp - latestSwipeEvent.timestamp);
+        console.log(swipeEvent.id, swipeEvent.timestamp);
         return timeDifferenceNow <= timestampThreshold;
     });
-
+    
     const roomSwipeEvents = swipeEvents.filter(swipeEvent => {
         return swipeEvent.code === code && swipeEvent.id !== latestSwipeEvent.id;
     });
+
 
     if (roomSwipeEvents.length > 0) {
         for (let i = 0; i < roomSwipeEvents.length; i++) {
