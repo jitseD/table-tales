@@ -1,13 +1,24 @@
-const $fullscreen = document.querySelector(`.fullscreen`);
+const $fullscreenAction = document.querySelector(`.fullscreen__action`);
+let fullscreen = false;
 
-const fullscreenHandle = e => {
-    document.documentElement.requestFullscreen().catch((e) => {
-        console.error(e);
-    })
+const toggleFullscreen = () => {
+    const element = document.documentElement;
+
+    if (!fullscreen) {
+        element.requestFullscreen().catch(e => {
+            console.error(e);
+        })
+        $fullscreenAction.textContent = `exit`;
+    } else {
+        document.exitFullscreen();
+        $fullscreenAction.textContent = `go`;
+    }
+
+    fullscreen = !fullscreen;
 }
 
 const init = () => {
-    $fullscreen.addEventListener(`click`, fullscreenHandle);
+    document.addEventListener(`dblclick`, toggleFullscreen);
 }
 
 init();
