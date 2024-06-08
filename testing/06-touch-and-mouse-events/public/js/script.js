@@ -120,12 +120,15 @@ const handleMouseUp = e => {
 
 // ----- touch events ----- //
 const handleTouchStart = e => {
+    e.preventDefault();
     swipe.start = { x: e.touches[0].clientX, y: e.touches[0].clientY }
 }
 const handleTouchMove = e => {
+    e.preventDefault();
     swipe.isSwiping = true;
 }
 const handleTouchEnd = e => {
+    e.preventDefault();
     if (!swipe.isSwiping) return;
 
     swipe.end = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY }
@@ -141,13 +144,9 @@ const determineSwipeAngle = () => {
     const deltaX = swipe.end.x - swipe.start.x;
     const deltaY = swipe.end.y - swipe.start.y;
 
-    if (Math.abs(deltaX) > Math.abs(deltaY)) {                      // horizontal
-        if (deltaX > 0) return swipe.angle = 0;
-        else return swipe.angle = 180;
-    } else {                                                        // vertical
-        if (deltaY > 0) return swipe.angle = 90
-        else return swipe.angle = 270;
-    }
+    if (Math.abs(deltaX) > Math.abs(deltaY)) swipe.angle = deltaX > 0 ? 0 : 180;            // horizontal
+    else swipe.angle = deltaY > 0 ? 90 : 270;                                               // vertical
+
 }
 const handleSwipe = () => {
     document.querySelector(`.swipe`).textContent = `x: ${swipe.end.x}, y: ${swipe.end.y}, a: ${swipe.angle}`
