@@ -1,0 +1,17 @@
+.hide {
+    display: none;
+}
+
+.canvas {
+    position: absolute;
+    z-index: -10;
+    top: 0;
+    left: 0;
+    transform-origin: top left;
+}
+
+*::selection {
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
