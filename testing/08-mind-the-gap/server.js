@@ -215,8 +215,8 @@ io.on(`connection`, socket => {
         calculateSimultaneousSwipes(code, swipeEvent);
     });
 
-    socket.on(`showSquare`, (code, square) => {
-        io.to(code).emit(`showSquare`, square);
+    socket.on(`attractions`, (code, square) => {
+        io.to(code).emit(`attractions`, square);
     })
 
     socket.on(`disconnect`, () => {

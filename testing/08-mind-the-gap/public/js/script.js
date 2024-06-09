@@ -10,11 +10,12 @@ let roomCode, roomHost = false;
 let myCoords, otherCoords, allCoords;
 let lastTimeSent = 0;
 let animationFrameId;
-let emptyCoords = [];
+const tolerance = 50;
+let emptyCoords = [], screenCoords = [];
 const swipe = { start: { x: null, y: null }, end: { x: null, y: null }, angle: null, isSwiping: false, isMouseDown: false, }
 const screenDimensions = { height: innerHeight, width: innerWidth };
-const canvas = { ctx: null, height: innerHeight, width: innerWidth };
-let square = { x: 50, y: 50, size: 50, dx: 2, dy: 2, fill: `black` };
+const canvas = { ctx: null, height: null, width: null };
+let square, attractions = [];
 
 // ----- calculation functions ----- //
 const getUrlParameter = (name) => {
@@ -73,10 +74,15 @@ const positionCanvas = (rotation, coords) => {
 const clampValue = (value, min, max) => {
     return Math.max(min, Math.min(max, value))
 };
-
+const randomNumber = (min, max) => {
+    return Math.floor(Math.random() * (max - min + 1) + min);
+}
 
 // ----- canvas ----- //
-const createCanvas = () => {
+const createCanvas = (size) => {
+    canvas.width = size.width;
+    canvas.height = size.height;
+
     canvas.ctx = $canvas.getContext(`2d`);
     const scale = window.devicePixelRatio;
     $canvas.width = Math.floor(canvas.width * scale);
@@ -88,20 +94,15 @@ const createCanvas = () => {
 const animateSquare = (time) => {
     canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    canvas.ctx.fillStyle = square.fill;
-    canvas.ctx.fillRect(square.x, square.y, square.size, square.size);
-
-    square.x += square.dx;
-    square.y += square.dy;
-
-    if (square.x + square.size > canvas.width || square.x < 0) square.dx *= -1;
-    if (square.y + square.size > canvas.height || square.y < 0) square.dy *= -1;
-
-    const diff = time - lastTimeSent;
-    if (diff > 1000) {
-        lastTimeSent = time;
-        socket.emit(`showSquare`, roomCode, square);
+    for (let i = 0; i < attractions.length; i++) {
+        const attraction = attractions[i];
+        attraction.show();
+        attraction.calculateAttraction(square);
     }
+
+    square.update();
+    square.checkEdges();
+    square.show();
 
     showConnectionLines();
     animationFrameId = requestAnimationFrame(animateSquare);
@@ -129,8 +130,6 @@ const showConnectionLines = () => {
     });
 }
 const getConnectionLine = (screenA, screenB) => {
-    const tolerance = 50;
-
     if (Math.abs(screenA.minX - screenB.maxX) <= tolerance) return {            // leftArightB
         x1: screenA.minX, y1: Math.max(screenA.minY, screenB.minY),
         x2: screenA.minX, y2: Math.min(screenA.maxY, screenB.maxY)
@@ -220,6 +219,33 @@ const handleSwipe = () => {
     socket.emit('swipe', roomCode, data, Date.now());
 }
 
+// ----- gaps ----- //
+const findGaps = () => {
+    emptyCoords = [];
+    screenCoords = []
+
+    for (let i = 0; i < canvas.width; i += Math.floor(canvas.width / 20)) {
+        for (let j = 0; j < canvas.height; j += Math.floor(canvas.height / 20)) {
+            const coord = { x: i, y: j }
+
+            if (isCoordInScreen(coord)) screenCoords.push(coord)
+            else emptyCoords.push(coord);
+        }
+    }
+}
+const isCoordInScreen = (coord) => {
+    for (let i = 0; i < allCoords.length; i++) {
+        const { minX, maxX, minY, maxY } = getExtremeCoords(allCoords[i]);
+
+        if (minX - tolerance <= coord.x && coord.x <= maxX + tolerance && minY - tolerance <= coord.y && coord.y <= maxY + tolerance) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// ----- wake lock ----- //
 const requestWakeLock = async () => {
     if ('wakeLock' in navigator) {
         try {
@@ -230,35 +256,154 @@ const requestWakeLock = async () => {
     }
 }
 
-// ----- gaps ----- //
-const findGaps = () => {
-    emptyCoords = [];
+// ----- vectors ----- //
+class Vector {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+    }
 
-    for (let i = 0; i < canvas.width; i += Math.floor(canvas.width / 20)) {
-        for (let j = 0; j < canvas.height; j += Math.floor(canvas.height / 20)) {
-            const coord = { x: i, y: j }
-            
-            if (!isCoordInScreen(coord)) {
-                emptyCoords.push(coord)
+    add(vector) {
+        this.x = this.x + vector.x;
+        this.y = this.y + vector.y;
+    }
+
+    sub(vector) {
+        this.x = this.x - vector.x;
+        this.y = this.y - vector.y;
+    }
+
+    mult(n) {
+        this.x = this.x * n;
+        this.y = this.y * n;
+    }
+
+    div(n) {
+        this.x = this.x / n;
+        this.y = this.y / n;
+    }
+
+    abs() {
+        this.x = Math.abs(this.x);
+        this.y = Math.abs(this.y);
+    }
+
+    limit(max) {
+        if (this.mag() > max) {
+            this.normalize();
+            this.mult(max);
+        }
+    }
+
+    mag() {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+
+    normalize() {
+        let m = this.mag();
+        if (m > 0) {
+            this.div(m);
+        }
+    }
+}
+class Mover {
+    constructor(pos, vel, acc) {
+        this.size = 50;
+        if (pos) this.pos = new Vector(pos.x, pos.y);
+        else this.pos = new Vector(50, 50);
+        if (vel) this.vel = new Vector(vel.x, vel.y);
+        else this.vel = new Vector(0, 0);
+        if (acc) this.acc = new Vector(acc.x, acc.y);
+        else this.acc = new Vector(0, 0);
+        this.mass = this.size / 5;
+        this.topSpeed = 20;
+        this.fill = `black`;
+    }
+
+    update() {
+        this.vel.add(this.acc);
+        this.pos.add(this.vel);
+
+        this.vel.limit(this.topSpeed);
+        this.acc.mult(0);
+    }
+
+    show() {
+        canvas.ctx.fillStyle = this.fill;
+        canvas.ctx.fillRect(this.pos.x, this.pos.y, this.size, this.size);
+    }
+
+    applyForce(force) {
+        let f = new Vector(force.x, force.y);
+        f.div(this.mass);
+        this.acc.add(f);
+    }
+
+    checkEdges() {
+        if (this.pos.x + this.size > canvas.width) {
+            this.pos.x = canvas.width - this.size;
+            this.vel.x *= -1;
+        } else if (this.pos.x < 0) {
+            this.pos.x = 0;
+            this.vel.x *= -1;
+        }
+
+        if (this.pos.y + this.size > canvas.height) {
+            this.pos.y = canvas.height - this.size;
+            this.vel.y *= -1;
+        } else if (this.pos.y < 0) {
+            this.pos.y = 0;
+            this.vel.y *= -1;
+        }
+    }
+}
+class Attraction {
+    constructor(attracting, pos) {
+        this.attracting = attracting;
+        this.size = 10;
+        this.pos = new Vector(pos.x, pos.y);
+        this.fill = this.attracting ? `green` : `red`;
+        this.timeout = 0;
+    }
+
+    show() {
+        canvas.ctx.fillStyle = this.fill;
+        canvas.ctx.fillRect(this.pos.x, this.pos.y, this.size, this.size);
+    }
+
+    calculateAttraction(mover) {
+        if (this.timeout > 100 || this.timeout === 0 || !this.attracting) {
+            this.timeout = 0;
+
+            const diff = new Vector(this.pos.x, this.pos.y);
+            diff.sub(mover.pos);
+            const dist = diff.mag();
+            let attractionStrength;
+
+            if (dist > this.size * 2 || !this.attracting) {
+                attractionStrength = 1000 / dist;
+                if (!this.attracting) {
+                    attractionStrength *= -1;
+                }
+            } else {
+                attractionStrength = 0;
+                mover.vel.mult(0)
+                this.timeout++;
             }
+
+            diff.normalize();
+            diff.mult(attractionStrength);
+
+            mover.applyForce(diff);
+        } else {
+            this.timeout++;
         }
     }
-};
-
-const isCoordInScreen = (coord) => {
-    for (let i = 0; i < allCoords.length; i++) {
-        const { minX, maxX, minY, maxY } = getExtremeCoords(allCoords[i]);
-
-        if (minX <= coord.x && coord.x <= maxX && minY <= coord.y && coord.y <= maxY) {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 const init = () => {
-    createCanvas();
+    createCanvas(screenDimensions);
+    square = new Mover();
 
     roomCode = getUrlParameter(`room`);
     $roomCode.textContent = roomCode;
@@ -312,30 +457,45 @@ const init = () => {
             allCoords.push(client.coords)
         });
 
+        createCanvas(room.canvas);
+        positionCanvas(room.clients[socket.id].rotation, myCoords);
         findGaps();
 
-        canvas.width = room.canvas.width;
-        canvas.height = room.canvas.height;
-        createCanvas();
-
-        positionCanvas(room.clients[socket.id].rotation, myCoords);
-
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        animationFrameId = requestAnimationFrame(animateSquare);
+
         if (room.host === socket.id) {
+            attractions = [];
+            for (let i = 0; i < screenCoords.length; i++) {
+                if (Math.random() > 0.8) {
+                    const attraction = new Attraction(true, screenCoords[i]);
+                    attractions.push(attraction);
+                }
+            }
+            for (let i = 0; i < emptyCoords.length; i++) {
+                const attraction = new Attraction(false, emptyCoords[i]);
+                attractions.push(attraction);
+            }
+            socket.emit(`attractions`, roomCode, attractions);
+            console.log(attractions);
             roomHost = true;
-            animationFrameId = requestAnimationFrame(animateSquare);
         } else {
             roomHost = false;
         }
     })
 
-    socket.on(`showSquare`, (data) => {
+    socket.on(`attractions`, (data) => {
         if (!roomHost) {
-            square = data;
+            attractions = [];
+            data.forEach(d => {
+                const attraction = new Attraction(d.attracting, d.pos)
+                attractions.push(attraction)
+            })
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
             animationFrameId = requestAnimationFrame(animateSquare);
         }
     })
+
 
     requestWakeLock();
 };
