@@ -6,13 +6,11 @@ const $otherIds = document.querySelector(`.other__ids`);
 const $canvas = document.querySelector(`.canvas`);
 
 let socket;
-let roomCode;
-let roomHost = false;
-let isAnimating = false;
-let myCoords;
-let otherCoords;
+let roomCode, roomHost = false;
+let myCoords, otherCoords, allCoords;
 let lastTimeSent = 0;
 let animationFrameId;
+let emptyCoords = [];
 const swipe = { start: { x: null, y: null }, end: { x: null, y: null }, angle: null, isSwiping: false, isMouseDown: false, }
 const screenDimensions = { height: innerHeight, width: innerWidth };
 const canvas = { ctx: null, height: innerHeight, width: innerWidth };
@@ -232,6 +230,33 @@ const requestWakeLock = async () => {
     }
 }
 
+// ----- gaps ----- //
+const findGaps = () => {
+    emptyCoords = [];
+
+    for (let i = 0; i < canvas.width; i += Math.floor(canvas.width / 20)) {
+        for (let j = 0; j < canvas.height; j += Math.floor(canvas.height / 20)) {
+            const coord = { x: i, y: j }
+            
+            if (!isCoordInScreen(coord)) {
+                emptyCoords.push(coord)
+            }
+        }
+    }
+};
+
+const isCoordInScreen = (coord) => {
+    for (let i = 0; i < allCoords.length; i++) {
+        const { minX, maxX, minY, maxY } = getExtremeCoords(allCoords[i]);
+
+        if (minX <= coord.x && coord.x <= maxX && minY <= coord.y && coord.y <= maxY) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 const init = () => {
     createCanvas();
 
@@ -247,8 +272,10 @@ const init = () => {
     socket.on(`room`, (room) => {
         if (room.host === socket.id) {
             $isHost.textContent = `I am the room host`;
+            roomHost = true;
         } else {
             $isHost.textContent = `I am NOT the room host`;
+            roomHost = false;
         }
 
         const clientIds = Object.keys(room.clients);
@@ -278,10 +305,14 @@ const init = () => {
     // ----- update canvas ----- //
     socket.on(`updateCanvas`, (room) => {
         otherCoords = [];
+        allCoords = [];
         Object.values(room.clients).map((client) => {
             if (client.id === socket.id) myCoords = client.coords;
-            else return otherCoords.push(client.coords);
+            else otherCoords.push(client.coords);
+            allCoords.push(client.coords)
         });
+
+        findGaps();
 
         canvas.width = room.canvas.width;
         canvas.height = room.canvas.height;
@@ -293,7 +324,6 @@ const init = () => {
         if (room.host === socket.id) {
             roomHost = true;
             animationFrameId = requestAnimationFrame(animateSquare);
-            isAnimating = true;
         } else {
             roomHost = false;
         }
