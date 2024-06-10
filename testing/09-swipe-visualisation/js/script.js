@@ -16,8 +16,6 @@ const createCanvas = () => {
     $canvas.width = Math.floor(canvas.width * scale);
     $canvas.height = Math.floor(canvas.height * scale);
     canvas.ctx.scale(scale, scale);
-    $canvas.style.width = `${canvas.width}px`;
-    $canvas.style.height = `${canvas.height}px`;
 }
 
 // ----- mouse events ----- //
@@ -58,6 +56,7 @@ class Swipe {
         this.opacity = 1;
         this.isMouseDown = false;
         this.isSwiping = false;
+        this.points = [];
     }
 
     show() {
@@ -65,7 +64,9 @@ class Swipe {
 
         canvas.ctx.beginPath();
         canvas.ctx.moveTo(this.start.x, this.start.y);
-        canvas.ctx.lineTo(this.end.x, this.end.y);
+        this.points.forEach((point) => {
+            canvas.ctx.lineTo(point.x, point.y);
+        })
         canvas.ctx.stroke();
 
         canvas.ctx.fillStyle = `white`;
@@ -91,10 +92,12 @@ const moveSwipe = (x, y) => {
     }
     if (!currentSwipe.isSwiping) currentSwipe.isSwiping = true;
 
-    currentSwipe.end = {
+    const point = {
         x: clampValue(x, 0, screenDimensions.width),
         y: clampValue(y, 0, screenDimensions.height)
     };
+    currentSwipe.points.push(point);
+    currentSwipe.end = point;
 }
 const endSwipe = (x, y) => {
     if (!currentSwipe || !currentSwipe.isSwiping) {
