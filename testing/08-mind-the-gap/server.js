@@ -96,9 +96,8 @@ const calculateSimultaneousSwipes = (code, latestSwipeEvent) => {
         return swipeEvent.code === code && swipeEvent.id !== latestSwipeEvent.id;
     });
 
-
     if (roomSwipeEvents.length > 0) {
-        for (let i = 0; i < roomSwipeEvents.length; i++) {
+        for (let i = roomSwipeEvents.length - 1; i >= 0; i--) {
             const timeDifference = Math.abs(roomSwipeEvents[i].timestamp - latestSwipeEvent.timestamp);
             if (timeDifference <= timestampThreshold) {
                 const clientA = rooms[code].clients[swipeEvents[i].id];
@@ -107,7 +106,7 @@ const calculateSimultaneousSwipes = (code, latestSwipeEvent) => {
                 if (clientA && clientB) {
                     const relPos = calculateRelPos(clientA, clientB, swipeEvents[i].data, latestSwipeEvent.data);
                     rooms[code].clients[latestSwipeEvent.id].coords = relPos.coords;
-                    rooms[code].clients[latestSwipeEvent.id].rotation = (relPos.rotation + clientA.rotation + 180) % 360;;
+                    rooms[code].clients[latestSwipeEvent.id].rotation = (relPos.rotation + clientA.rotation + 180) % 360;
                     updateRoomCanvas(code);
 
                     swipeEvents.splice(swipeEvents.indexOf(roomSwipeEvents[i]), 1);
@@ -215,8 +214,8 @@ io.on(`connection`, socket => {
         calculateSimultaneousSwipes(code, swipeEvent);
     });
 
-    socket.on(`attractions`, (code, square) => {
-        io.to(code).emit(`attractions`, square);
+    socket.on(`updateForces`, (code, square) => {
+        io.to(code).emit(`updateForces`, square);
     })
 
     socket.on(`disconnect`, () => {
