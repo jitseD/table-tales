@@ -1,13 +1,13 @@
 const $canvas = document.querySelector(`.canvas`);
-
-const swipe = {
-    start: { x: null, y: null },
-    end: { x: null, y: null },
-    angle: null,
-    isSwiping: false,
-    isMouseDown: false,
-}
+const swipes = [];
+let currentSwipe
 const canvas = { ctx: null, height: innerHeight, width: innerWidth };
+const screenDimensions = { height: innerHeight, width: innerWidth };
+
+// ----- calculation functions ----- //
+const clampValue = (value, min, max) => {
+    return Math.max(min, Math.min(max, value))
+};
 
 // ----- canvas ----- //
 const createCanvas = () => {
@@ -22,64 +22,115 @@ const createCanvas = () => {
 
 // ----- mouse events ----- //
 const handleMouseDown = e => {
-    swipe.start = { x: e.clientX, y: e.clientY }
-    swipe.isMouseDown = true;
+    startSwipe(e.clientX, e.clientY);
+    currentSwipe.isMouseDown = true;
 }
 const handleMouseMove = e => {
-    if (!swipe.isMouseDown) return;
-    swipe.isSwiping = true;
-
-    swipe.end = { x: e.clientX, y: e.clientY };
-    visualizeSwipe();
+    if (!currentSwipe || !currentSwipe.isMouseDown) {
+        currentSwipe = null;
+        return
+    }
+    moveSwipe(e.clientX, e.clientY);
 };
 const handleMouseUp = e => {
-    swipe.isMouseDown = false;
-    if (!swipe.isSwiping) return;
-
-    swipe.end = { x: e.clientX, y: e.clientY };
-    swipe.timestamp = Date.now();
-    swipe.isSwiping = false;
+    endSwipe(e.clientX, e.clientY)
 }
 
 // ----- touch events ----- //
 const handleTouchStart = e => {
-    e.preventDefault();
-    swipe.start = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    startSwipe(e.touches[0].clientX, e.touches[0].clientY);
 }
 const handleTouchMove = e => {
     e.preventDefault();
-    swipe.isSwiping = true;
-
-    swipe.end = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    visualizeSwipe();
+    moveSwipe(e.touches[0].clientX, e.touches[0].clientY);
 }
 const handleTouchEnd = e => {
     e.preventDefault();
-    if (!swipe.isSwiping) return;
-
-    swipe.end = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY }
-    swipe.isSwiping = false;
+    endSwipe(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
 }
 
 // ----- swipe ----- //
-const visualizeSwipe = () => {
+class Swipe {
+    constructor(start, end) {
+        this.start = start;
+        this.end = end;
+        this.timestamp = null;
+        this.opacity = 1;
+        this.isMouseDown = false;
+        this.isSwiping = false;
+    }
+
+    show() {
+        canvas.ctx.strokeStyle = `rgba(0, 0, 0, ${this.opacity})`;
+
+        canvas.ctx.beginPath();
+        canvas.ctx.moveTo(this.start.x, this.start.y);
+        canvas.ctx.lineTo(this.end.x, this.end.y);
+        canvas.ctx.stroke();
+
+        canvas.ctx.fillStyle = `white`;
+        canvas.ctx.beginPath();
+        canvas.ctx.arc(this.end.x, this.end.y, 10, 0, Math.PI * 2);
+        canvas.ctx.fill();
+        canvas.ctx.stroke();
+    }
+
+    calulateOpacity() {
+        this.opacity = 1 - ((Date.now() - this.timestamp) / 5000);
+    }
+}
+const startSwipe = (x, y) => {
+    const start = { x, y };
+    const end = { x: clampValue(x, 0, screenDimensions.width), y: clampValue(y, 0, screenDimensions.height) };
+    currentSwipe = new Swipe(start, end);
+}
+const moveSwipe = (x, y) => {
+    if (!currentSwipe) {
+        currentSwipe = null;
+        return
+    }
+    if (!currentSwipe.isSwiping) currentSwipe.isSwiping = true;
+
+    currentSwipe.end = {
+        x: clampValue(x, 0, screenDimensions.width),
+        y: clampValue(y, 0, screenDimensions.height)
+    };
+}
+const endSwipe = (x, y) => {
+    if (!currentSwipe || !currentSwipe.isSwiping) {
+        currentSwipe = null;
+        return
+    };
+
+    currentSwipe.end = {
+        x: Math.round(clampValue(x, 0, screenDimensions.width)),
+        y: Math.round(clampValue(y, 0, screenDimensions.height)),
+    }
+    currentSwipe.timestamp = Date.now();
+    currentSwipe.isSwiping = false;
+    currentSwipe.isMouseDown = false;
+
+    swipes.push(currentSwipe);
+}
+const visualizeSwipes = () => {
+    // console.log(swipes);
     canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    canvas.ctx.beginPath();
-    canvas.ctx.moveTo(swipe.start.x, swipe.start.y);
-    canvas.ctx.lineTo(swipe.end.x, swipe.end.y);
-    canvas.ctx.stroke();
+    swipes.forEach((currentSwipe, i) => {
+        currentSwipe.calulateOpacity();
+        if (currentSwipe.opacity <= 0) swipes.splice(i, 1)
+        else currentSwipe.show();
+    });
 
-    canvas.ctx.fillStyle = `white`;
-    canvas.ctx.beginPath();
-    canvas.ctx.arc(swipe.end.x, swipe.end.y, 10, 0, Math.PI * 2);
-    canvas.ctx.fill();
-    canvas.ctx.stroke();
+    if (currentSwipe && currentSwipe.isSwiping) currentSwipe.show();
+
+    requestAnimationFrame(visualizeSwipes);
 }
 
 const init = () => {
     // ----- canvas ----- //
     createCanvas();
+    visualizeSwipes();
 
     // ----- mouse events ----- //
     $canvas.addEventListener('mousedown', handleMouseDown);
