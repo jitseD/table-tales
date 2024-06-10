@@ -91,7 +91,7 @@ const calculateSimultaneousSwipes = (code, latestSwipeEvent) => {
         const timeDifferenceNow = Math.abs(swipeEvent.timestamp - latestSwipeEvent.timestamp);
         return timeDifferenceNow <= timestampThreshold;
     });
-    
+
     const roomSwipeEvents = swipeEvents.filter(swipeEvent => {
         return swipeEvent.code === code && swipeEvent.id !== latestSwipeEvent.id;
     });
@@ -151,7 +151,7 @@ const calculateRelCoords = (coord, angleDiff, clientA, clientB, swipeA, swipeB) 
     posY += centerAY - centerBY;
 
     // move screen B by swipe A
-    const deltaAX = swipeA.x - clientA.width / 2
+    const deltaAX = swipeA.x - clientA.width / 2;
     const deltaAY = swipeA.y - clientA.height / 2;
 
     switch (clientA.rotation) {
@@ -214,8 +214,8 @@ io.on(`connection`, socket => {
         calculateSimultaneousSwipes(code, swipeEvent);
     });
 
-    socket.on(`updateForces`, (code, square) => {
-        io.to(code).emit(`updateForces`, square);
+    socket.on(`updateForces`, (code, forces, square) => {
+        io.to(code).emit(`updateForces`, forces, square);
     })
 
     socket.on(`disconnect`, () => {

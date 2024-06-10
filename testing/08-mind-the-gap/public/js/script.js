@@ -155,13 +155,13 @@ class Mover {
     constructor(pos, vel, acc) {
         this.size = 50;
         if (pos) this.pos = new Vector(pos.x, pos.y);
-        else this.pos = new Vector(50, 50);
+        else this.pos = new Vector(100, 100);
         if (vel) this.vel = new Vector(vel.x, vel.y);
         else this.vel = new Vector(0, 0);
         if (acc) this.acc = new Vector(acc.x, acc.y);
         else this.acc = new Vector(0, 0);
-        this.mass = this.size / 5;
-        this.topSpeed = 20;
+        this.mass = this.size;
+        this.topSpeed = 10;
         this.fill = `black`;
     }
 
@@ -222,7 +222,7 @@ class Force {
             const diff = new Vector(this.pos.x, this.pos.y);
             diff.sub(mover.pos);
             const dist = diff.mag();
-            let forceStrength = this.calculateForceStrength(dist);
+            let forceStrength = this.calculateForceStrength(dist) * this.size;
 
             if (this instanceof Attraction && dist < this.size * 2) {
                 forceStrength = 0;
@@ -257,16 +257,23 @@ class Repulsion extends Force {
     }
 }
 const createForces = () => {
-    attractions = screenCoords
-        .filter(() => Math.random() > 0.95)
-        .map(coord => new Attraction(coord, randomNumber(50, 100)));
+    attractions = [];
+    allCoords.forEach((coords => {
+        const { minX, maxX, minY, maxY } = getExtremeCoords(coords);
 
-    repulsions = emptyCoords
-        .filter(() => Math.random() > 0.85)
-        .map(coord => new Repulsion(coord, 10));
+        for (let i = 0; i < 3; i++) {
+            const size = randomNumber(10, 20);
+            const pos = { x: randomNumber(minX, maxX), y: randomNumber(minY, maxY) };
+
+            const attraction = new Attraction(pos, size);
+            attractions.push(attraction);
+        }
+    }))
+
+    repulsions = emptyCoords.map(coord => new Repulsion(coord, 1));
 
     const forces = { attractions, repulsions }
-    socket.emit(`updateForces`, roomCode, forces);
+    socket.emit(`updateForces`, roomCode, forces, square);
 };
 const setForces = (forces) => {
     attractions = forces.attractions.map(force => new Attraction(force.pos, force.size));
@@ -291,8 +298,9 @@ const isCoordInScreen = (coord) => {
     for (let i = 0; i < allCoords.length; i++) {
         const { minX, maxX, minY, maxY } = getExtremeCoords(allCoords[i]);
 
-        if (minX - tolerance <= coord.x && coord.x <= maxX + tolerance && minY - tolerance <= coord.y && coord.y <= maxY + tolerance) {
-            return true;
+        if (minX - tolerance <= coord.x && coord.x <= maxX + tolerance
+            && minY - tolerance <= coord.y && coord.y <= maxY + tolerance) {
+            return true
         }
     }
 
@@ -322,10 +330,26 @@ const animateSquare = () => {
     canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const forces = [...attractions, ...repulsions];
+    console.log(`-----`);
+    let attractionTimeouts = 0;
+    attractions.forEach((attraction) => {
+        if (attraction.timeout < 1000 && attraction.timeout != 0) {
+            attractionTimeouts++;
+        }
+    })
+
+    console.log(attractionTimeouts, attractions.length);
+    console.log(attractionTimeouts / attractions.length);
+    if (attractionTimeouts / attractions.length > 0.6) {
+        attractions.forEach((attraction) => {
+            attraction.timeout = 0;
+        });
+    }
     forces.forEach(force => {
         force.show();
         force.calculateForce(square);
     });
+
 
     square.update();
     square.checkEdges();
@@ -394,8 +418,8 @@ const handleMouseUp = e => {
     if (!swipe.isSwiping) return;
 
     swipe.end = {
-        x: clampValue(e.clientX, 0, screenDimensions.width),
-        y: clampValue(e.clientY, 0, screenDimensions.height),
+        x: Math.round(clampValue(e.clientX, 0, screenDimensions.width)),
+        y: Math.round(clampValue(e.clientY, 0, screenDimensions.height)),
     }
 
     determineSwipeAngle();
@@ -418,8 +442,8 @@ const handleTouchEnd = e => {
     if (!swipe.isSwiping) return;
 
     swipe.end = {
-        x: clampValue(e.changedTouches[0].clientX, 0, screenDimensions.width),
-        y: clampValue(e.changedTouches[0].clientY, 0, screenDimensions.height),
+        x: Math.round(clampValue(e.changedTouches[0].clientX, 0, screenDimensions.width)),
+        y: Math.round(clampValue(e.changedTouches[0].clientY, 0, screenDimensions.height)),
     }
 
     determineSwipeAngle();
@@ -509,9 +533,10 @@ const init = () => {
         handleAnimation();
     })
 
-    socket.on(`updateForces`, (data) => {
+    socket.on(`updateForces`, (forecs, square) => {
         if (!roomHost) {
-            setForces(data)
+            setForces(forecs)
+            square = new Mover(square.pos, square.vel, square.acc)
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
             animateSquare();
         }
