@@ -24,32 +24,34 @@ const createCanvas = () => {
 const handleMouseDown = e => {
     swipe.start = { x: e.clientX, y: e.clientY }
     swipe.isMouseDown = true;
-    console.log(`start`);
 }
 const handleMouseMove = e => {
     if (!swipe.isMouseDown) return;
     swipe.isSwiping = true;
-    console.log(`move`);
-}
+
+    swipe.end = { x: e.clientX, y: e.clientY };
+    visualizeSwipe();
+};
 const handleMouseUp = e => {
     swipe.isMouseDown = false;
     if (!swipe.isSwiping) return;
 
-    swipe.end = { x: e.clientX, y: e.clientY }
+    swipe.end = { x: e.clientX, y: e.clientY };
+    swipe.timestamp = Date.now();
     swipe.isSwiping = false;
-    console.log(`end`);
 }
 
 // ----- touch events ----- //
 const handleTouchStart = e => {
     e.preventDefault();
     swipe.start = { x: e.touches[0].clientX, y: e.touches[0].clientY }
-    console.log(`start`);
 }
 const handleTouchMove = e => {
     e.preventDefault();
     swipe.isSwiping = true;
-    console.log(`move`);
+
+    swipe.end = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    visualizeSwipe();
 }
 const handleTouchEnd = e => {
     e.preventDefault();
@@ -57,7 +59,22 @@ const handleTouchEnd = e => {
 
     swipe.end = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY }
     swipe.isSwiping = false;
-    console.log(`end`);
+}
+
+// ----- swipe ----- //
+const visualizeSwipe = () => {
+    canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    canvas.ctx.beginPath();
+    canvas.ctx.moveTo(swipe.start.x, swipe.start.y);
+    canvas.ctx.lineTo(swipe.end.x, swipe.end.y);
+    canvas.ctx.stroke();
+
+    canvas.ctx.fillStyle = `white`;
+    canvas.ctx.beginPath();
+    canvas.ctx.arc(swipe.end.x, swipe.end.y, 10, 0, Math.PI * 2);
+    canvas.ctx.fill();
+    canvas.ctx.stroke();
 }
 
 const init = () => {
