@@ -6,7 +6,7 @@ const $otherIds = document.querySelector(`.other__ids`);
 const $canvas = document.querySelector(`.canvas`);
 
 let socket;
-let roomCode, roomHost = false;
+let roomCode, roomHost = false, roomClients = {};
 let myCoords, otherCoords, allCoords;
 let lastTimeSent = 0;
 let animationFrameId;
@@ -97,7 +97,8 @@ const updateCoords = (room) => {
     Object.values(room.clients).map((client) => {
         if (client.id === socket.id) myCoords = client.coords;
         else otherCoords.push(client.coords);
-        allCoords.push(client.coords)
+        allCoords.push(client.coords);
+        roomClients[client.id] = { coords: client.coords, id: client.id, boxOnScreen: false };
     });
 }
 
@@ -154,12 +155,9 @@ class Vector {
 class Mover {
     constructor(pos, vel, acc) {
         this.size = 50;
-        if (pos) this.pos = new Vector(pos.x, pos.y);
-        else this.pos = new Vector(100, 100);
-        if (vel) this.vel = new Vector(vel.x, vel.y);
-        else this.vel = new Vector(0, 0);
-        if (acc) this.acc = new Vector(acc.x, acc.y);
-        else this.acc = new Vector(0, 0);
+        this.pos = new Vector(pos?.x || 100, pos?.y || 100);
+        this.vel = new Vector(vel?.x || 1, vel?.y || 1);
+        this.acc = new Vector(acc?.x || 0, acc?.y || 0);
         this.mass = this.size;
         this.topSpeed = 10;
         this.fill = `black`;
@@ -201,12 +199,27 @@ class Mover {
             this.vel.y *= -1;
         }
     }
+
+    checkBoxOnScreen() {
+        Object.values(roomClients).forEach((client) => {
+            const { minX, maxX, minY, maxY } = getExtremeCoords(client.coords);
+            const isOnScreen = !(this.pos.x + this.size < minX || this.pos.x > maxX
+                || this.pos.y + this.size < minY || this.pos.y > maxY);
+
+            if (isOnScreen && client.id !== socket.id && !client.boxOnScreen) {
+                const forces = { attractions, repulsions }
+                socket.emit(`boxOnScreen`, client.id, square, forces);
+            }
+
+            client.boxOnScreen = isOnScreen;
+        })
+    }
 }
 class Force {
-    constructor(pos, size, fill) {
+    constructor(pos, size, timeout, fill) {
         this.size = size;
         this.pos = new Vector(pos.x, pos.y);
-        this.timeout = 0;
+        this.timeout = timeout;
         this.fill = fill;
     }
 
@@ -239,8 +252,8 @@ class Force {
     }
 }
 class Attraction extends Force {
-    constructor(pos, size) {
-        super(pos, size, `green`);
+    constructor(pos, size, timeout) {
+        super(pos, size, timeout ? timeout : 0, `green`);
     }
 
     calculateForceStrength(dist) {
@@ -248,8 +261,8 @@ class Attraction extends Force {
     }
 }
 class Repulsion extends Force {
-    constructor(pos, size) {
-        super(pos, size, `red`);
+    constructor(pos, size, timeout) {
+        super(pos, size, timeout ? timeout : 0, `red`);
     }
 
     calculateForceStrength(dist) {
@@ -276,8 +289,8 @@ const createForces = () => {
     socket.emit(`updateForces`, roomCode, forces, square);
 };
 const setForces = (forces) => {
-    attractions = forces.attractions.map(force => new Attraction(force.pos, force.size));
-    repulsions = forces.repulsions.map(force => new Repulsion(force.pos, force.size));
+    attractions = forces.attractions.map(force => new Attraction(force.pos, force.size, force.timeout));
+    repulsions = forces.repulsions.map(force => new Repulsion(force.pos, force.size, force.timeout));
 }
 
 // ----- gaps ----- //
@@ -330,30 +343,26 @@ const animateSquare = () => {
     canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const forces = [...attractions, ...repulsions];
-    console.log(`-----`);
     let attractionTimeouts = 0;
     attractions.forEach((attraction) => {
-        if (attraction.timeout < 1000 && attraction.timeout != 0) {
-            attractionTimeouts++;
-        }
+        if (attraction.timeout < 1000 && attraction.timeout != 0) attractionTimeouts++
     })
 
-    console.log(attractionTimeouts, attractions.length);
-    console.log(attractionTimeouts / attractions.length);
     if (attractionTimeouts / attractions.length > 0.6) {
-        attractions.forEach((attraction) => {
-            attraction.timeout = 0;
-        });
+        attractions.forEach(attraction => attraction.timeout = 0);
     }
+
     forces.forEach(force => {
         force.show();
         force.calculateForce(square);
     });
 
-
-    square.update();
-    square.checkEdges();
-    square.show();
+    square.checkBoxOnScreen();
+    if (roomClients[socket.id].boxOnScreen) {
+        square.update();
+        square.checkEdges();
+        square.show();
+    }
 
     showConnectionLines();
     animationFrameId = requestAnimationFrame(animateSquare);
@@ -372,8 +381,8 @@ const showConnectionLines = () => {
     }
 
     connectionLines.forEach(line => {
-        canvas.ctx.strokeStyle = `black`;
-        canvas.ctx.lineWidth = 20;
+        canvas.ctx.strokeStyle = `red`;
+        canvas.ctx.lineWidth = 5;
         canvas.ctx.beginPath();
         canvas.ctx.moveTo(line.x1, line.y1);
         canvas.ctx.lineTo(line.x2, line.y2);
@@ -529,19 +538,31 @@ const init = () => {
         positionCanvas(room.clients[socket.id].rotation, myCoords);
 
         findGaps();
-        if (roomHost) createForces();
-        handleAnimation();
-    })
-
-    socket.on(`updateForces`, (forecs, square) => {
-        if (!roomHost) {
-            setForces(forecs)
-            square = new Mover(square.pos, square.vel, square.acc)
-            if (animationFrameId) cancelAnimationFrame(animationFrameId);
-            animateSquare();
+        if (roomHost) {
+            createForces();
+            handleAnimation();
         }
     })
 
+    socket.on(`updateForces`, (forces, squareData) => {
+        if (!roomHost) {
+            setForces(forces)
+            square = new Mover(squareData.pos, squareData.vel, squareData.acc)
+        }
+    })
+
+    socket.on(`boxOnScreen`, (squareData, forcesData, fromId) => {
+        setForces(forcesData)
+        square = new Mover(squareData.pos, squareData.vel, squareData.acc);
+
+        square.update();
+        square.checkEdges();
+        square.show();
+
+        roomClients[socket.id].boxOnScreen = true;
+        roomClients[fromId].boxOnScreen = true;
+        handleAnimation();
+    })
 
     requestWakeLock();
 };

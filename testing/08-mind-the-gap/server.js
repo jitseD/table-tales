@@ -218,6 +218,11 @@ io.on(`connection`, socket => {
         io.to(code).emit(`updateForces`, forces, square);
     })
 
+    socket.on(`boxOnScreen`, (targetId, square, forces) => {
+        console.log(square);
+        io.to(targetId).emit(`boxOnScreen`, square, forces, socket.id);
+    })
+
     socket.on(`disconnect`, () => {
         console.log(`❌ disconnection`);
         for (const code in rooms) {
