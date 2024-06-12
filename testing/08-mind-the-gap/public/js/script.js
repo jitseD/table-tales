@@ -358,7 +358,9 @@ const animateSquare = () => {
     });
 
     square.checkBoxOnScreen();
-    if (roomClients[socket.id].boxOnScreen) {
+    const boxOffAllScreens = Object.values(roomClients).every(client => !client.boxOnScreen);
+
+    if (roomClients[socket.id].boxOnScreen || boxOffAllScreens) {
         square.update();
         square.checkEdges();
         square.show();
