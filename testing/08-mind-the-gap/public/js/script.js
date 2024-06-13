@@ -348,7 +348,7 @@ const animateSquare = () => {
         if (attraction.timeout < 1000 && attraction.timeout != 0) attractionTimeouts++
     })
 
-    if (attractionTimeouts / attractions.length > 0.6) {
+    if (attractionTimeouts / attractions.length > 0.7) {
         attractions.forEach(attraction => attraction.timeout = 0);
     }
 
@@ -384,7 +384,7 @@ const showConnectionLines = () => {
 
     connectionLines.forEach(line => {
         canvas.ctx.strokeStyle = `red`;
-        canvas.ctx.lineWidth = 5;
+        canvas.ctx.lineWidth = 10;
         canvas.ctx.beginPath();
         canvas.ctx.moveTo(line.x1, line.y1);
         canvas.ctx.lineTo(line.x2, line.y2);
@@ -433,9 +433,7 @@ const handleMouseUp = e => {
         y: Math.round(clampValue(e.clientY, 0, screenDimensions.height)),
     }
 
-    determineSwipeAngle();
     handleSwipe();
-
     swipe.isSwiping = false;
 }
 
@@ -457,9 +455,7 @@ const handleTouchEnd = e => {
         y: Math.round(clampValue(e.changedTouches[0].clientY, 0, screenDimensions.height)),
     }
 
-    determineSwipeAngle();
     handleSwipe();
-
     swipe.isSwiping = false;
 }
 
@@ -473,6 +469,7 @@ const determineSwipeAngle = () => {
 
 }
 const handleSwipe = () => {
+    determineSwipeAngle();
     document.querySelector(`.swipe`).textContent = `x: ${swipe.end.x}, y: ${swipe.end.y}, a: ${swipe.angle}`
 
     const data = { x: swipe.end.x, y: swipe.end.y, angle: swipe.angle };

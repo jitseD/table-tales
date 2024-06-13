@@ -23,15 +23,8 @@ server.listen(port, () => {
 })
 
 // ----- calculation functions ----- //
-const roundAngle = (angle) => {
-    const angleNormalized = ((angle % 360) + 360) % 360;
-
-    if (angleNormalized >= 0 && angleNormalized < 45) return 0;
-    if (angleNormalized >= 45 && angleNormalized < 135) return 90;
-    if (angleNormalized >= 135 && angleNormalized < 225) return 180;
-    if (angleNormalized >= 225 && angleNormalized < 315) return 270;
-
-    return 0;
+const normalizeAngle = (angle) => {
+    return ((angle % 360) + 360) % 360;
 };
 const getScreenCoord = (i, screen) => {
     switch (i) {
@@ -119,7 +112,7 @@ const calculateSimultaneousSwipes = (code, latestSwipeEvent) => {
     swipeEvents.push(latestSwipeEvent);
 };
 const calculateRelPos = (clientA, clientB, swipeA, swipeB) => {
-    const angleDiff = roundAngle(swipeB.angle) - roundAngle(swipeA.angle);    // deg
+    const angleDiff = normalizeAngle(swipeB.angle - swipeA.angle);    // deg
     const coords = [];
 
     for (let i = 0; i < 4; i++) {
@@ -131,9 +124,9 @@ const calculateRelPos = (clientA, clientB, swipeA, swipeB) => {
     return { coords, rotation: angleDiff };
 }
 const calculateRelCoords = (coord, angleDiff, clientA, clientB, swipeA, swipeB) => {
-    const { minX, minY } = getExtremeCoords(clientA.coords);
-    const centerAX = minX + clientA.width / 2;
-    const centerAY = minY + clientA.height / 2;
+    const { minX, maxX, minY, maxY } = getExtremeCoords(clientA.coords);
+    const centerAX = minX + (maxX - minX) / 2;
+    const centerAY = minY + (maxY - minY) / 2;
     const centerBX = clientB.width / 2;
     const centerBY = clientB.height / 2;
 
@@ -219,7 +212,6 @@ io.on(`connection`, socket => {
     })
 
     socket.on(`boxOnScreen`, (targetId, square, forces) => {
-        console.log(square);
         io.to(targetId).emit(`boxOnScreen`, square, forces, socket.id);
     })
 
