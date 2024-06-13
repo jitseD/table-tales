@@ -473,18 +473,18 @@ const handleSwipe = () => {
     document.querySelector(`.swipe`).textContent = `x: ${swipe.end.x}, y: ${swipe.end.y}, a: ${swipe.angle}`
 
     const data = { x: swipe.end.x, y: swipe.end.y, angle: swipe.angle };
-    console.log('Swiped in direction:', data);
+    console.log(`Swiped in direction:`, data);
 
-    socket.emit('swipe', roomCode, data, Date.now());
+    socket.emit(`swipe`, roomCode, data, Date.now());
 }
 
 // ----- wake lock ----- //
 const requestWakeLock = async () => {
-    if ('wakeLock' in navigator) {
+    if (`wakeLock` in navigator) {
         try {
-            const wakeLock = await navigator.wakeLock.request('screen');
+            const wakeLock = await navigator.wakeLock.request(`screen`);
         } catch (err) {
-            if (err.name != 'NotAllowedError') console.error(`${err.name}, ${err.message}`);
+            if (err.name != `NotAllowedError`) console.error(`${err.name}, ${err.message}`);
         }
     }
 }
@@ -519,14 +519,14 @@ const init = () => {
     })
 
     // ----- mouse events ----- //
-    $canvas.addEventListener('mousedown', handleMouseDown);
-    $canvas.addEventListener('mousemove', handleMouseMove);
-    $canvas.addEventListener('mouseup', handleMouseUp);
+    $canvas.addEventListener(`mousedown`, handleMouseDown);
+    $canvas.addEventListener(`mousemove`, handleMouseMove);
+    $canvas.addEventListener(`mouseup`, handleMouseUp);
 
     // ----- touch events ----- //
-    $canvas.addEventListener('touchstart', handleTouchStart);
-    $canvas.addEventListener('touchmove', handleTouchMove);
-    $canvas.addEventListener('touchend', handleTouchEnd);
+    $canvas.addEventListener(`touchstart`, handleTouchStart);
+    $canvas.addEventListener(`touchmove`, handleTouchMove);
+    $canvas.addEventListener(`touchend`, handleTouchEnd);
 
     // ----- update canvas ----- //
     socket.on(`updateCanvas`, (room) => {

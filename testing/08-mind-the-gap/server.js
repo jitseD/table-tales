@@ -97,12 +97,26 @@ const calculateSimultaneousSwipes = (code, latestSwipeEvent) => {
                 const clientB = rooms[code].clients[latestSwipeEvent.id];
 
                 if (clientA && clientB) {
-                    const relPos = calculateRelPos(clientA, clientB, swipeEvents[i].data, latestSwipeEvent.data);
-                    rooms[code].clients[latestSwipeEvent.id].coords = relPos.coords;
-                    rooms[code].clients[latestSwipeEvent.id].rotation = (relPos.rotation + clientA.rotation + 180) % 360;
-                    updateRoomCanvas(code);
+                    console.log(clientA.connected, clientB.connected);
+
+                    if (!clientB.connected) {
+                        const relPos = calculateRelPos(clientA, clientB, swipeEvents[i].data, latestSwipeEvent.data);
+                        rooms[code].clients[latestSwipeEvent.id].coords = relPos.coords;
+                        rooms[code].clients[latestSwipeEvent.id].rotation = (relPos.rotation + clientA.rotation + 180) % 360;
+                        console.log(`clientB not connected`);
+                        updateRoomCanvas(code);
+                    } else if (!clientA.connected) {
+                        const relPos = calculateRelPos(clientB, clientA, latestSwipeEvent.data, swipeEvents[i].data);
+                        rooms[code].clients[clientA.id].coords = relPos.coords;
+                        rooms[code].clients[clientA.id].rotation = (relPos.rotation + clientB.rotation + 180) % 360;
+                        console.log(`clientA not connected`);
+                        updateRoomCanvas(code);
+                    }
 
                     swipeEvents.splice(swipeEvents.indexOf(roomSwipeEvents[i]), 1);
+
+                    rooms[code].clients[clientA.id].connected = true;
+                    rooms[code].clients[clientB.id].connected = true;
                     return;
                 }
             }
@@ -198,6 +212,7 @@ io.on(`connection`, socket => {
     socket.on(`connectToRoom`, (code, data) => {
         socket.join(code);
         data.id = socket.id;
+        data.connected = false;
         addClientToRoom(code, data);
         io.to(code).emit(`room`, rooms[code]);
     });
