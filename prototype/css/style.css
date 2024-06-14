@@ -137,10 +137,12 @@ strong {
     font-size: var(--font-m);
     grid-row: 1;
     font-family: var(--font-primary);
-    width: min-content;
+    height: fit-content;
+}
+
+.connect__header {
     display: grid;
     place-content: center;
-    height: fit-content;
 }
 
 .connect__header--first::after {
@@ -189,7 +191,8 @@ strong {
     place-items: center;
 }
 
-.connect__text {
+.connect__text,
+.step__text {
     font-size: var(--font-s);
 }
 
@@ -317,6 +320,22 @@ strong {
     margin-bottom: 1rem;
 }
 
+.dalma::after {
+    right: -10rem;
+}
+
+.dalma {
+    margin-left: 5.5rem;
+}
+
+.lorenzo::after {
+    right: -12rem;
+}
+
+.lorenzo {
+    margin-left: 3rem;
+}
+
 
 
 .instruction {
@@ -394,18 +413,81 @@ strong {
     width: 100%;
 }
 
+.emotion__surprise {
+    background-image: url("../assets/img/surprise_bg.png");
+}
+
+.emotion__anger {
+    background-image: url("../assets/img/anger_bg.png");
+}
+
+.emotion__excitement {
+    background-image: url("../assets/img/excitement_bg.png");
+}
+
+.emotion__calm {
+    background-image: url("../assets/img/calm_bg.png");
+}
+
+.emotion__anxiety {
+    background-image: url("../assets/img/anxiety_bg.png");
+}
+
 .emotion__title {
     font-weight: 900;
     color: var(--sadness-color);
     font-size: var(--font-l);
 }
 
-.emotion__btn {
+.emotion__title--surprise {
+    color: var(--surprise-color);
+}
+
+.emotion__title--anger {
+    color: var(--anger-color);
+}
+
+.emotion__title--excitement {
+    color: var(--excitement-color);
+}
+
+.emotion__title--calm {
+    color: var(--calm-color);
+}
+
+.emotion__title--anxiety {
+    color: var(--anxiety-color);
+}
+
+.emotion__btn--sadness {
     color: white;
     background-image: url("../assets/img/sadness_btn.png");
 }
 
+.emotion__btn--surprise {
+    color: black;
+    background-image: url("../assets/img/surprise_btn.png");
+}
 
+.emotion__btn--anger {
+    color: white;
+    background-image: url("../assets/img/anger_btn.png");
+}
+
+.emotion__btn--excitement {
+    color: black;
+    background-image: url("../assets/img/excitement_btn.png");
+}
+
+.emotion__btn--calm {
+    color: black;
+    background-image: url("../assets/img/calm_btn.png");
+}
+
+.emotion__btn--anxiety {
+    color: white;
+    background-image: url("../assets/img/anxiety_btn.png");
+}
 
 
 
@@ -421,7 +503,6 @@ strong {
 }
 
 .explanation__header {
-    width: 10rem;
     font-weight: 400;
     grid-row: 2;
 }
@@ -462,4 +543,69 @@ strong {
     margin-left: 3rem;
     justify-self: start;
     max-width: 15rem;
+}
+
+
+
+.step {
+    grid-template-columns: repeat(min-content, 3);
+    width: 100%;
+    background-image: url("../assets/img/step_bg.png");
+    background-repeat: no-repeat;
+    background-size: 60%;
+    padding-inline: 10rem;
+    margin-inline: -10rem;
+}
+
+.step__1{
+    background-position: center top -10rem;
+}
+
+.step__2{
+    background-position: center;
+}
+
+.step__3{
+background-position: center bottom -9rem;
+}
+
+.step__img {
+    aspect-ratio: 1/1;
+    width: 50vh;
+    height: 30vh;
+    padding-right: 5.5rem;
+    max-width: 80%;
+    grid-row: 2;
+}
+
+.step__header {
+    font-weight: 400;
+    font-family: var(--font-body);
+    width: fit-content;
+    grid-row: 1;
+    margin-left: -6rem;
+    height: fit-content;
+    display: grid;
+}
+
+.step__header--second {
+    font-family: var(--font-primary);
+    position: relative;
+    left: 4rem;
+}
+
+.step__header--third {
+    position: relative;
+    left: 10rem;
+    margin-top: -0.5rem;
+}
+
+.step__wrapper {
+    margin-inline: 3rem;
+}
+
+.step__number {
+    font-size: var(--font-s);
+    font-weight: 700;
+    margin-bottom: 0.6rem;
 }
