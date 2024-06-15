@@ -106,19 +106,23 @@ strong {
     font-weight: 700;
 }
 
-.btn {
+.btn, .btn__secondary {
     color: black;
     font-family: var(--font-body);
     font-size: 1.1rem;
     text-decoration: none;
     width: 12.5rem;
-    height: 3rem;
+    height: 3.5rem;
     display: grid;
     place-items: center;
     background-image: url("../assets/img/primary_btn.png");
     background-size: 100%;
     background-position: center;
     background-repeat: no-repeat;
+}
+
+.btn__secondary{
+    background-image: url("../assets/img/secondary_btn.png");
 }
 
 .main_btn {
@@ -557,16 +561,16 @@ strong {
     margin-inline: -10rem;
 }
 
-.step__1{
+.step__1 {
     background-position: center top -10rem;
 }
 
-.step__2{
+.step__2 {
     background-position: center;
 }
 
-.step__3{
-background-position: center bottom -9rem;
+.step__3 {
+    background-position: center bottom -9rem;
 }
 
 .step__img {
@@ -608,4 +612,164 @@ background-position: center bottom -9rem;
     font-size: var(--font-s);
     font-weight: 700;
     margin-bottom: 0.6rem;
+}
+
+
+
+.ending {
+    background-image: url("../assets/img/ending_img.png");
+    background-repeat: no-repeat;
+    background-position: center top;
+    background-size: 60%;
+    padding-inline: 10rem;
+    margin-inline: -10rem;
+    align-items: flex-start;
+    grid-template-rows: 29rem min-content min-content min-content min-content min-content min-content min-content;
+}
+
+.ending__header {
+    font-weight: 400;
+    font-family: var(--font-body);
+    width: fit-content;
+    grid-row: 1;
+    height: fit-content;
+    display: grid;
+    text-align: center;
+}
+
+.ending__header--first {
+    font-size: 1.3rem;
+    text-align: center;
+    margin-block: 1.5rem;
+}
+
+.ending__header--second {
+    margin-left: -12rem;
+}
+
+.ending__header--second::after,
+.ending__header--last::before {
+    grid-area: 1 / 1;
+    content: "";
+    display: block;
+    position: relative;
+    height: 1.5rem;
+    width: 15rem;
+    background-image: url("../assets/img/ending_line.png");
+    background-size: 70%;
+    background-repeat: no-repeat;
+    background-position: top;
+}
+
+.ending__header--second::after {
+    top: 0.5rem;
+    right: -7.5rem;
+}
+
+.ending__header--third {
+    font-family: var(--font-primary);
+    position: relative;
+}
+
+.ending__header--last {
+    position: relative;
+    left: 6rem;
+}
+
+.ending__header--last::before {
+    right: 1.5rem;
+    top: 0.5rem;
+}
+
+.ending__wrapper {
+    background-image: url("../assets/img/ending_bg.png");
+    background-size: 60%;
+    background-repeat: no-repeat;
+    background-position: center 8.2rem;
+    padding-block: 3rem;
+    margin-block: -3rem;
+    padding-inline: 10rem;
+    margin-inline: -10rem;
+    display: grid;
+}
+
+.ending__vid {
+    aspect-ratio: 1/1;
+    width: 90vh;
+    height: 40vh;
+    max-width: 105%;
+    justify-self: center;
+    grid-row: 3;
+    padding-inline: 4rem;
+    margin-inline: -4rem;
+    margin-bottom: 3rem;
+}
+
+.ending__secondary {
+    font-size: var(--font-s);
+    margin-left: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.ending__name {
+    font-size: 2.2rem;
+    margin-left: 2rem;
+    font-weight: 500;
+    margin-bottom: 2rem;
+    font-family: var(--font-primary);
+}
+
+.ending__text {
+    margin-inline: 2rem;
+    margin-top: 0.5rem;
+    font-size: var(--font-s);
+    line-height: 1.5;
+}
+
+.introduction__wrapper, .discount__wrapper {
+    margin-top: 4rem;
+    display: grid;
+}
+
+.ending__title {
+    margin-inline: 2rem;
+    font-size: 2.2rem;
+    font-family: var(--font-primary);
+    margin-bottom: 0.5rem;
+}
+
+.ending__title--bold{
+    font-weight: 500;
+}
+
+.ending__btn:not(:last-child) {
+    justify-self: center;
+    margin-top: 2rem;
+}
+
+
+.discount__wrapper{
+    place-items: center;
+}
+
+.ending__text--ticket{
+    font-size: 1.3rem;
+}
+
+.ending__title--discount{
+    font-family: var(--font-body);
+    margin-bottom: 0rem;
+}
+
+.ending__text--discount{
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    background-image: url("../assets/img/ending_blob.png");
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: contain;
+    width: 100%;
+    padding-block: 2rem;
+    margin-block: 2rem;
+    text-align: center;
 }
