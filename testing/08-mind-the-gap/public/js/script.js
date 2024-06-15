@@ -180,24 +180,6 @@ class Mover {
         this.acc.add(f);
     }
 
-    checkEdges() {
-        if (this.pos.x + this.size > canvas.width) {
-            this.pos.x = canvas.width - this.size;
-            this.vel.x *= -1;
-        } else if (this.pos.x < 0) {
-            this.pos.x = 0;
-            this.vel.x *= -1;
-        }
-
-        if (this.pos.y + this.size > canvas.height) {
-            this.pos.y = canvas.height - this.size;
-            this.vel.y *= -1;
-        } else if (this.pos.y < 0) {
-            this.pos.y = 0;
-            this.vel.y *= -1;
-        }
-    }
-
     checkBoxOnScreen() {
         Object.values(roomClients).forEach((client) => {
             const { minX, maxX, minY, maxY } = getExtremeCoords(client.coords);
@@ -214,39 +196,32 @@ class Mover {
     }
 }
 class Force {
-    constructor(pos, size, timeout, fill) {
+    constructor(pos, size, fill) {
         this.size = size;
         this.pos = new Vector(pos.x, pos.y);
-        this.timeout = timeout;
         this.fill = fill;
     }
 
     calculateForce(mover) {
-        if (this instanceof Repulsion || this.timeout > 1000 || this.timeout === 0) {
-            this.timeout = 0;
+        const { dist, diff } = this.calculateDistanceFromBox(mover);
+        let forceStrength = this.calculateForceStrength(dist) * this.size;
 
-            const diff = new Vector(this.pos.x, this.pos.y);
-            diff.sub(mover.pos);
-            const dist = diff.mag();
-            let forceStrength = this.calculateForceStrength(dist) * this.size;
+        diff.normalize();
+        diff.mult(forceStrength);
+        mover.applyForce(diff);
 
-            if (this instanceof Attraction && dist < this.size * 2) {
-                forceStrength = 0;
-                mover.vel.mult(0);
-                this.timeout++;
-            }
+    }
 
-            diff.normalize();
-            diff.mult(forceStrength);
-            mover.applyForce(diff);
-        } else {
-            this.timeout++;
-        }
+    calculateDistanceFromBox(mover) {
+        const diff = new Vector(this.pos.x, this.pos.y);
+        diff.sub(mover.pos);
+        const dist = diff.mag();
+        return { dist, diff }
     }
 }
 class Attraction extends Force {
-    constructor(pos, size, timeout) {
-        super(pos, size, timeout ? timeout : 0, `green`);
+    constructor(pos, size) {
+        super(pos, size, `green`);
     }
 
     calculateForceStrength(dist) {
@@ -254,8 +229,8 @@ class Attraction extends Force {
     }
 }
 class Repulsion extends Force {
-    constructor(pos, size, timeout) {
-        super(pos, size, timeout ? timeout : 0, `red`);
+    constructor(pos, size) {
+        super(pos, size, `red`);
     }
 
     calculateForceStrength(dist) {
@@ -269,7 +244,7 @@ const createForces = () => {
 
         for (let i = 0; i < 3; i++) {
             const size = randomNumber(10, 20);
-            const pos = { x: randomNumber(minX, maxX), y: randomNumber(minY, maxY) };
+            const pos = { x: randomNumber(minX, maxX - square.size), y: randomNumber(minY, maxY - square.size) };
 
             const attraction = new Attraction(pos, size);
             attractions.push(attraction);
@@ -282,8 +257,8 @@ const createForces = () => {
     socket.emit(`updateForces`, roomCode, forces, square);
 }
 const setForces = (forces) => {
-    attractions = forces.attractions.map(force => new Attraction(force.pos, force.size, force.timeout));
-    repulsions = forces.repulsions.map(force => new Repulsion(force.pos, force.size, force.timeout));
+    attractions = forces.attractions.map(force => new Attraction(force.pos, force.size));
+    repulsions = forces.repulsions.map(force => new Repulsion(force.pos, force.size));
 }
 
 // ----- gaps ----- //
@@ -329,16 +304,20 @@ const handleAnimation = () => {
     $video.play();
 }
 const animateSquare = () => {
-    const forces = [...attractions, ...repulsions];
-    let attractionTimeouts = 0;
-    attractions.forEach((attraction) => {
-        if (attraction.timeout < 1000 && attraction.timeout != 0) attractionTimeouts++
+    attractions = attractions.map((attraction) => {
+        const { dist } = attraction.calculateDistanceFromBox(square);
+        if (dist > attraction.size * 2) return attraction
+        else {
+            const randomScreenIndex = Math.floor(Math.random() * allCoords.length);
+            const { minX, maxX, minY, maxY } = getExtremeCoords(allCoords[randomScreenIndex]);
+
+            const size = randomNumber(10, 20);
+            const pos = { x: randomNumber(minX, maxX- square.size), y: randomNumber(minY, maxY- square.size) };
+            return new Attraction(pos, size);
+        }
     })
 
-    if (attractionTimeouts / attractions.length > 0.7) {
-        attractions.forEach(attraction => attraction.timeout = 0);
-    }
-
+    const forces = [...attractions, ...repulsions];
     forces.forEach(force => {
         force.calculateForce(square);
     });
@@ -348,7 +327,6 @@ const animateSquare = () => {
 
     if (roomClients[socket.id].boxOnScreen || boxOffAllScreens) {
         square.update();
-        square.checkEdges();
         square.show();
     }
 
@@ -570,7 +548,6 @@ const init = () => {
         square = new Mover(squareData.pos, squareData.vel, squareData.acc);
 
         square.update();
-        square.checkEdges();
         square.show();
 
         roomClients[socket.id].boxOnScreen = true;

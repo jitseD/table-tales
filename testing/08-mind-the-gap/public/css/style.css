@@ -51,3 +51,8 @@ h1,
 p {
     color: white;
 }
+
+.attraction {
+    background-color: green;
+    aspect-ratio: 1;
+}
