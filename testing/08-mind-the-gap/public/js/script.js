@@ -50,10 +50,6 @@ const positionCanvas = (rotation, coords) => {
     document.querySelector(`.screenPos`).textContent = `minX: ${minX}, minY: ${minY}, maxX: ${maxX}, maxY: ${maxY}`;
 
     switch (rotation) {
-        case 0:
-            $canvas.style.left = `${-minX}px`;
-            $canvas.style.top = `${-minY}px`;
-            break;
         case 90:
             $canvas.style.left = `${screenDimensions.width + minY}px`;
             $canvas.style.top = `${-minX}px`;
@@ -71,6 +67,8 @@ const positionCanvas = (rotation, coords) => {
             $canvas.style.top = `${-minY}px`;
             break;
     }
+
+    showConnectionLines();
 }
 const clampValue = (value, min, max) => {
     return Math.max(min, Math.min(max, value))
@@ -155,7 +153,7 @@ class Vector {
 }
 class Mover {
     constructor(pos, vel, acc) {
-        this.size = 100;
+        this.size = 300;
         this.pos = new Vector(pos?.x || 100, pos?.y || 100);
         this.vel = new Vector(vel?.x || 1, vel?.y || 1);
         this.acc = new Vector(acc?.x || 0, acc?.y || 0);
@@ -173,8 +171,7 @@ class Mover {
     }
 
     show() {
-        $video.style.left = `${this.pos.x}px`;
-        $video.style.top = `${this.pos.y}px`;
+        $video.style.transform = `translate(${this.pos.x}px, ${this.pos.y}px)`;
     }
 
     applyForce(force) {
@@ -317,7 +314,7 @@ const isCoordInScreen = (coord) => {
 }
 
 // ----- canvas ----- //
-const createCanvas = (size) => {
+const setCanvas = (size) => {
     canvas.width = size.width;
     canvas.height = size.height;
 
@@ -329,7 +326,6 @@ const createCanvas = (size) => {
 const handleAnimation = () => {
     cancelAnimationFrame(animationFrameId);
     animationFrameId = requestAnimationFrame(animateSquare);
-    console.log($video);
     $video.play();
 }
 const animateSquare = () => {
@@ -356,7 +352,6 @@ const animateSquare = () => {
         square.show();
     }
 
-    // showConnectionLines();
     animationFrameId = requestAnimationFrame(animateSquare);
 }
 
@@ -373,33 +368,51 @@ const showConnectionLines = () => {
     }
 
     connectionLines.forEach(line => {
-        canvas.ctx.strokeStyle = `red`;
-        canvas.ctx.lineWidth = 10;
-        canvas.ctx.beginPath();
-        canvas.ctx.moveTo(line.x1, line.y1);
-        canvas.ctx.lineTo(line.x2, line.y2);
-        canvas.ctx.stroke();
+        const lineImg = document.createElement('img');
+        lineImg.classList.add('connection__line');
+        lineImg.setAttribute('src', './assets/img/line.png');
+
+        lineImg.style.rotate = `${line.rotation}deg`;
+        lineImg.style.height = `${line.width !== 0 ? line.width : line.height}px`;
+        lineImg.style.top = `${line.y}px`;
+        lineImg.style.left = `${line.x}px`;
+
+        $canvas.appendChild(lineImg);
     });
 }
 const getConnectionLine = (screenA, screenB) => {
+    const lineWidth = 6;
+
     if (Math.abs(screenA.minX - screenB.maxX) <= tolerance) return {            // leftArightB
-        x1: screenA.minX, y1: Math.max(screenA.minY, screenB.minY),
-        x2: screenA.minX, y2: Math.min(screenA.maxY, screenB.maxY)
+        x: screenA.minX, y: Math.max(screenA.minY, screenB.minY),
+        width: Math.abs(screenA.minX - screenA.minX),
+        height: Math.abs(Math.max(screenA.minY, screenB.minY) - Math.min(screenA.maxY, screenB.maxY)),
+        rotation: 0,
+        type: `left`
     }
 
     if (Math.abs(screenA.maxX - screenB.minX) <= tolerance) return {            // rightAleftB
-        x1: screenA.maxX, y1: Math.max(screenA.minY, screenB.minY),
-        x2: screenA.maxX, y2: Math.min(screenA.maxY, screenB.maxY)
+        x: screenA.maxX - lineWidth, y: Math.max(screenA.minY, screenB.minY),
+        width: Math.abs(screenA.maxX - screenA.maxX),
+        height: Math.abs(Math.max(screenA.minY, screenB.minY) - Math.min(screenA.maxY, screenB.maxY)),
+        rotation: 0,
+        type: `right`
     }
 
     if (Math.abs(screenA.minY - screenB.maxY) <= tolerance) return {            // topAbottomB
-        x1: Math.max(screenA.minX, screenB.minX), y1: screenA.minY,
-        x2: Math.min(screenA.maxX, screenB.maxX), y2: screenA.minY
+        x: Math.max(screenA.minX, screenB.minX), y: screenA.minY + lineWidth,
+        width: Math.abs(Math.max(screenA.minX, screenB.minX) - Math.min(screenA.maxX, screenB.maxX)),
+        height: Math.abs(screenA.minY - screenA.minY),
+        rotation: -90,
+        type: `top`
     }
 
-    if (Math.abs(screenA.maxY - screenB.minY) <= tolerance) return {            //bottomAtopB
-        x1: Math.max(screenA.minX, screenB.minX), y1: screenA.maxY,
-        x2: Math.min(screenA.maxX, screenB.maxX), y2: screenA.maxY
+    if (Math.abs(screenA.maxY - screenB.minY) <= tolerance) return {            // bottomAtopB
+        x: Math.max(screenA.minX, screenB.minX), y: screenA.maxY,
+        width: Math.abs(Math.max(screenA.minX, screenB.minX) - Math.min(screenA.maxX, screenB.maxX)),
+        height: Math.abs(screenA.maxY - screenA.maxY),
+        rotation: -90,
+        type: `bottom`
     }
 
     return null;
@@ -488,7 +501,7 @@ const requestWakeLock = async () => {
 }
 
 const init = () => {
-    createCanvas(screenDimensions)
+    setCanvas(screenDimensions)
     square = new Mover();
 
     roomCode = getUrlParameter(`room`);
@@ -535,8 +548,7 @@ const init = () => {
     socket.on(`updateCanvas`, (room) => {
         updateCoords(room);
         setRoomHost(room.host);
-        createCanvas(room.canvas);
-
+        setCanvas(room.canvas);
         positionCanvas(room.clients[socket.id].rotation, myCoords);
 
         findGaps();
