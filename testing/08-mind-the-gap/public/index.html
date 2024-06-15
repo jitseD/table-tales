@@ -9,14 +9,16 @@
 </head>
 
 <body>
-    <h1 class="my__id"></h1>
-    <p class="">room: <strong class="room__code"></strong></p>
-    <p class="is__host"></p>
-    <p class="screenRotation"></p>
-    <p class="screenPos"></p>
-    <ul class="other__ids"></ul>
-    <p class="swipe"></p>
-    <canvas class="canvas"></canvas>
+    <h1 class="no-touch my__id"></h1>
+    <p class="no-touch ">room: <strong class="room__code"></strong></p>
+    <p class="no-touch is__host"></p>
+    <p class="no-touch screenRotation"></p>
+    <p class="no-touch screenPos"></p>
+    <div class="canvas">
+        <video class="video" src="./assets/vid/test-webm.webm" autoplay loop></video>
+    </div>
+    <ul class="no-touch other__ids"></ul>
+    <p class="no-touch swipe"></p>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="./js/script.js" type="module"></script>

@@ -4,6 +4,7 @@ const $isHost = document.querySelector(`.is__host`);
 const $swipe = document.querySelector(`.swipe`);
 const $otherIds = document.querySelector(`.other__ids`);
 const $canvas = document.querySelector(`.canvas`);
+const $video = document.querySelector(`.video`);
 
 let socket;
 let roomCode, roomHost = false, roomClients = {};
@@ -50,11 +51,11 @@ const positionCanvas = (rotation, coords) => {
 
     switch (rotation) {
         case 0:
-            $canvas.style.left = `${-minX}px`
+            $canvas.style.left = `${-minX}px`;
             $canvas.style.top = `${-minY}px`;
             break;
         case 90:
-            $canvas.style.left = `${screenDimensions.width + minY}px`
+            $canvas.style.left = `${screenDimensions.width + minY}px`;
             $canvas.style.top = `${-minX}px`;
             break;
         case 180:
@@ -62,11 +63,11 @@ const positionCanvas = (rotation, coords) => {
             $canvas.style.top = `${screenDimensions.height + minY}px`;
             break;
         case 270:
-            $canvas.style.top = `${screenDimensions.height + minX}px`
+            $canvas.style.top = `${screenDimensions.height + minX}px`;
             $canvas.style.left = `${-minY}px`;
             break;
         default:
-            $canvas.style.left = `${-minX}px`
+            $canvas.style.left = `${-minX}px`;
             $canvas.style.top = `${-minY}px`;
             break;
     }
@@ -154,7 +155,7 @@ class Vector {
 }
 class Mover {
     constructor(pos, vel, acc) {
-        this.size = 50;
+        this.size = 100;
         this.pos = new Vector(pos?.x || 100, pos?.y || 100);
         this.vel = new Vector(vel?.x || 1, vel?.y || 1);
         this.acc = new Vector(acc?.x || 0, acc?.y || 0);
@@ -172,8 +173,8 @@ class Mover {
     }
 
     show() {
-        canvas.ctx.fillStyle = this.fill;
-        canvas.ctx.fillRect(this.pos.x, this.pos.y, this.size, this.size);
+        $video.style.left = `${this.pos.x}px`;
+        $video.style.top = `${this.pos.y}px`;
     }
 
     applyForce(force) {
@@ -221,11 +222,6 @@ class Force {
         this.pos = new Vector(pos.x, pos.y);
         this.timeout = timeout;
         this.fill = fill;
-    }
-
-    show() {
-        canvas.ctx.fillStyle = this.fill;
-        canvas.ctx.fillRect(this.pos.x, this.pos.y, this.size, this.size);
     }
 
     calculateForce(mover) {
@@ -287,7 +283,7 @@ const createForces = () => {
 
     const forces = { attractions, repulsions }
     socket.emit(`updateForces`, roomCode, forces, square);
-};
+}
 const setForces = (forces) => {
     attractions = forces.attractions.map(force => new Attraction(force.pos, force.size, force.timeout));
     repulsions = forces.repulsions.map(force => new Repulsion(force.pos, force.size, force.timeout));
@@ -325,23 +321,18 @@ const createCanvas = (size) => {
     canvas.width = size.width;
     canvas.height = size.height;
 
-    canvas.ctx = $canvas.getContext(`2d`);
-    const scale = window.devicePixelRatio;
-    $canvas.width = Math.floor(canvas.width * scale);
-    $canvas.height = Math.floor(canvas.height * scale);
-    canvas.ctx.scale(scale, scale);
     $canvas.style.width = `${canvas.width}px`;
     $canvas.style.height = `${canvas.height}px`;
 }
 
 // ----- animation ----- //
 const handleAnimation = () => {
-    if (animationFrameId) cancelAnimationFrame(animationFrameId);
-    animateSquare();
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = requestAnimationFrame(animateSquare);
+    console.log($video);
+    $video.play();
 }
 const animateSquare = () => {
-    canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     const forces = [...attractions, ...repulsions];
     let attractionTimeouts = 0;
     attractions.forEach((attraction) => {
@@ -353,7 +344,6 @@ const animateSquare = () => {
     }
 
     forces.forEach(force => {
-        force.show();
         force.calculateForce(square);
     });
 
@@ -366,7 +356,7 @@ const animateSquare = () => {
         square.show();
     }
 
-    showConnectionLines();
+    // showConnectionLines();
     animationFrameId = requestAnimationFrame(animateSquare);
 }
 
@@ -478,6 +468,14 @@ const handleSwipe = () => {
     socket.emit(`swipe`, roomCode, data, Date.now());
 }
 
+// ----- video ----- //
+const checkVideoSupport = (type, codecs) => {
+    return $video.canPlayType(`video/${type}; codecs="${codecs}"`) !== ""
+}
+const adjustVideoFormat = (format) => {
+    $video.src = `./assets/vid/test-${format}`;
+}
+
 // ----- wake lock ----- //
 const requestWakeLock = async () => {
     if (`wakeLock` in navigator) {
@@ -527,6 +525,11 @@ const init = () => {
     $canvas.addEventListener(`touchstart`, handleTouchStart);
     $canvas.addEventListener(`touchmove`, handleTouchMove);
     $canvas.addEventListener(`touchend`, handleTouchEnd);
+
+    // ----- video ----- //
+    if (checkVideoSupport(`mp4`, `hvc1`)) adjustVideoFormat(`hecv.mov`);
+    else if (checkVideoSupport(`webm`, `vp9, vorbis`)) adjustVideoFormat(`webm.webm`);
+    else console.error(`no browser support`);
 
     // ----- update canvas ----- //
     socket.on(`updateCanvas`, (room) => {
