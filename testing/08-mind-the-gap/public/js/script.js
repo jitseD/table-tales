@@ -1,8 +1,3 @@
-const $myId = document.querySelector(`.my__id`);
-const $roomCode = document.querySelector(`.room__code`);
-const $isHost = document.querySelector(`.is__host`);
-const $swipe = document.querySelector(`.swipe`);
-const $otherIds = document.querySelector(`.other__ids`);
 const $canvas = document.querySelector(`.canvas`);
 const $video = document.querySelector(`.video`);
 
@@ -26,28 +21,23 @@ const getUrlParameter = (name) => {
     return results === null ? false : decodeURIComponent(results[1].replace(/\+/g, ` `));
 }
 const getExtremeCoords = (coords) => {
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
-    coords.forEach(coord => {
-        if (coord.x < minX) minX = coord.x;
-        if (coord.y < minY) minY = coord.y;
-        if (coord.x > maxX) maxX = coord.x;
-        if (coord.y > maxY) maxY = coord.y;
-    });
+    coords.forEach(({ x, y }) => {
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+    })
 
     return { minX, minY, maxX, maxY };
 }
 const positionCanvas = (rotation, coords) => {
-    const { minX, minY, maxX, maxY } = getExtremeCoords(coords);
+    const { minX, minY } = getExtremeCoords(coords);
 
     $canvas.style.width = `${canvas.width}px`;
     $canvas.style.height = `${canvas.height}px`;
     $canvas.style.rotate = `${rotation}deg`;
-    document.querySelector(`.screenRotation`).textContent = rotation;
-    document.querySelector(`.screenPos`).textContent = `minX: ${minX}, minY: ${minY}, maxX: ${maxX}, maxY: ${maxY}`;
 
     switch (rotation) {
         case 90:
@@ -79,13 +69,8 @@ const randomNumber = (min, max) => {
 
 // ----- miscellaneous ----- //
 const setRoomHost = (hostId) => {
-    if (hostId === socket.id) {
-        $isHost.textContent = `I am the room host`;
-        roomHost = true;
-    } else {
-        $isHost.textContent = `I am NOT the room host`;
-        roomHost = false;
-    }
+    if (hostId === socket.id) roomHost = true;
+    else roomHost = false;
 }
 
 // ----- coords ----- //
@@ -304,6 +289,8 @@ const handleAnimation = () => {
     $video.play();
 }
 const animateSquare = () => {
+    let attractionsChanged = false;
+
     attractions = attractions.map((attraction) => {
         const { dist } = attraction.calculateDistanceFromBox(square);
         if (dist > attraction.size * 2) return attraction
@@ -312,7 +299,8 @@ const animateSquare = () => {
             const { minX, maxX, minY, maxY } = getExtremeCoords(allCoords[randomScreenIndex]);
 
             const size = randomNumber(10, 20);
-            const pos = { x: randomNumber(minX, maxX- square.size), y: randomNumber(minY, maxY- square.size) };
+            const pos = { x: randomNumber(minX, maxX - square.size), y: randomNumber(minY, maxY - square.size) };
+            attractionsChanged = true;
             return new Attraction(pos, size);
         }
     })
@@ -330,12 +318,16 @@ const animateSquare = () => {
         square.show();
     }
 
+    if (attractionsChanged) socket.emit(`updateForces`, roomCode, { attractions, repulsions }, square);
     animationFrameId = requestAnimationFrame(animateSquare);
 }
 
 // ----- side connections ----- //
 const showConnectionLines = () => {
+    const $connectionLines = document.querySelectorAll(`.connection__line`);
+    $connectionLines.forEach(line => line.remove());
     const connectionLines = [];
+
     const screenA = getExtremeCoords(myCoords);
 
     for (let i = 0; i < otherCoords.length; i++) {
@@ -346,9 +338,9 @@ const showConnectionLines = () => {
     }
 
     connectionLines.forEach(line => {
-        const lineImg = document.createElement('img');
-        lineImg.classList.add('connection__line');
-        lineImg.setAttribute('src', './assets/img/line.png');
+        const lineImg = document.createElement(`img`);
+        lineImg.classList.add(`connection__line`);
+        lineImg.setAttribute(`src`, `./assets/img/line.png`);
 
         lineImg.style.rotate = `${line.rotation}deg`;
         lineImg.style.height = `${line.width !== 0 ? line.width : line.height}px`;
@@ -451,7 +443,6 @@ const determineSwipeAngle = () => {
 }
 const handleSwipe = () => {
     determineSwipeAngle();
-    document.querySelector(`.swipe`).textContent = `x: ${swipe.end.x}, y: ${swipe.end.y}, a: ${swipe.angle}`
 
     const data = { x: swipe.end.x, y: swipe.end.y, angle: swipe.angle };
     console.log(`Swiped in direction:`, data);
@@ -483,29 +474,10 @@ const init = () => {
     square = new Mover();
 
     roomCode = getUrlParameter(`room`);
-    $roomCode.textContent = roomCode;
 
     socket = io.connect(`/`);
-    socket.on(`connect`, () => {
-        $myId.textContent = socket.id;
-        socket.emit(`connectToRoom`, roomCode, screenDimensions);
-    });
-
-    socket.on(`room`, (room) => {
-        setRoomHost(room.host);
-        const clientIds = Object.keys(room.clients);
-        $otherIds.innerHTML = ``;
-        for (const otherSocetId in clientIds) {
-            if (clientIds.hasOwnProperty(otherSocetId)) {
-                const clientId = clientIds[otherSocetId]
-                if (clientId !== socket.id) {
-                    const listItem = document.createElement(`li`);
-                    listItem.textContent = clientId;
-                    $otherIds.appendChild(listItem);
-                }
-            }
-        }
-    })
+    socket.on(`connect`, () => socket.emit(`connectToRoom`, roomCode, screenDimensions));
+    socket.on(`room`, (room) => setRoomHost(room.host))
 
     // ----- mouse events ----- //
     $canvas.addEventListener(`mousedown`, handleMouseDown);
