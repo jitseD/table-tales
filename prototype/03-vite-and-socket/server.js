@@ -1,27 +1,50 @@
 import express from 'express';
-import http from 'http';
-import { Server } from 'socket.io';
+import https from 'https';
+import fs from 'fs';
+import cors from 'cors';
+import { Server as SocketServer } from 'socket.io';
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
 
-const port = 3000;
-const clients = {};
+const options = {
+    key: fs.readFileSync('localhost.key'),
+    cert: fs.readFileSync('localhost.crt')
+};
 
-server.listen(port, () => {
-    console.log(`Server listening on port ${port}`);
+const server = https.createServer(options, app);
+const io = new SocketServer(server, {
+    cors: {
+        origin: "https://localhost:5173",
+        methods: ["GET", "POST"],
+        credentials: true
+    }
 });
 
-io.on(`connection`, (socket) => {
+const port = 443;
+const clients = {};
+
+// Use CORS middleware
+app.use(cors({
+    origin: "https://localhost:5173",
+    methods: ["GET", "POST"],
+    credentials: true
+}));
+
+app.use(express.static('public'));
+
+server.listen(port, () => {
+    console.log(`🙉 app listening on port ${port}`);
+});
+
+io.on('connection', (socket) => {
     console.log(`✅ connection ${socket.id}`);
 
-    clients[socket.id] = {id: socket.id};
+    clients[socket.id] = { id: socket.id };
     console.log(clients);
 
-    socket.emit(`clients`, clients);
+    socket.emit('clients', clients);
 
-    socket.on(`disconnect`, () => {
+    socket.on('disconnect', () => {
         console.log(`❌ disconnection ${socket.id}`);
         delete clients[socket.id];
         console.log(clients);

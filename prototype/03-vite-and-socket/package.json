@@ -5,14 +5,15 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 vite",
     "build": "vite build",
-    "serve": "node server.js"
+    "serve": "NODE_TLS_REJECT_UNAUTHORIZED=0 node server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.19.2",
     "socket.io": "^4.7.5",
     "socket.io-client": "^4.7.5",
