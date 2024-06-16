@@ -15,7 +15,6 @@ const io = new Server(server);
 const port = 443;
 const rooms = {};
 let swipeEvents = [];
-const timestampThreshold = 5000;
 
 app.use(express.static(`public`))
 server.listen(port, () => {
@@ -23,48 +22,31 @@ server.listen(port, () => {
 })
 
 // ----- calculation functions ----- //
-const roundAngle = (angle) => {
-    const angleNormalized = ((angle % 360) + 360) % 360;
-
-    if (angleNormalized >= 0 && angleNormalized < 45) return 0;
-    if (angleNormalized >= 45 && angleNormalized < 135) return 90;
-    if (angleNormalized >= 135 && angleNormalized < 225) return 180;
-    if (angleNormalized >= 225 && angleNormalized < 315) return 270;
-
-    return 0;
-};
+const normalizeAngle = (angle) => ((angle % 360) + 360) % 360;
 const getScreenCoord = (i, screen) => {
     switch (i) {
-        case 0: return { x: 0, y: 0 };                                        // Top-left
         case 1: return { x: screen.width, y: 0 };                             // Top-right
         case 2: return { x: screen.width, y: screen.height };                 // Bottom-right
         case 3: return { x: 0, y: screen.height };                            // Bottom-left
-        default: return { x: 0, y: 0 };
+        default: return { x: 0, y: 0 };                                       // Top-left
     }
 }
 const getExtremeCoords = (coords) => {
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
-    coords.forEach(coord => {
-        if (coord.x < minX) minX = coord.x;
-        if (coord.y < minY) minY = coord.y;
-        if (coord.x > maxX) maxX = coord.x;
-        if (coord.y > maxY) maxY = coord.y;
-    });
+    coords.forEach(({ x, y }) => {
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+    })
 
     return { minX, minY, maxX, maxY };
 }
 
 // ----- socket room ----- //
 const addClientToRoom = (code, client) => {
-    const coords = [];
-    for (let i = 0; i < 4; i++) {
-        const coord = getScreenCoord(i, client);
-        coords.push(coord);
-    }
+    const coords = Array.from({ length: 10 }, (_, i) => getScreenCoord(i, client));
     client.coords = coords;
     client.rotation = 0;
 
@@ -75,66 +57,63 @@ const addClientToRoom = (code, client) => {
 }
 const removeClientFromRoom = (code, clientId) => {
     delete rooms[code].clients[clientId];
-    if (Object.keys(rooms[code].clients).length === 0) {
-        delete rooms[code];
-    } else {
-        const roomClients = Object.keys(rooms[code].clients);
-        if (rooms[code].host === clientId) {
-            rooms[code].host = roomClients[0];
-        }
-    }
+    updateRoomCanvas(code);
+
+    if (Object.keys(rooms[code].clients).length === 0) return delete rooms[code];
+    else if (rooms[code].host === clientId) rooms[code].host = Object.keys(rooms[code].clients)[0];
+
+    io.to(code).emit(`room`, rooms[code]);
 }
 
 // ----- swipe connecting ----- //
 const calculateSimultaneousSwipes = (code, latestSwipeEvent) => {
-    swipeEvents = swipeEvents.filter(swipeEvent => {
-        const timeDifferenceNow = Math.abs(swipeEvent.timestamp - latestSwipeEvent.timestamp);
-        return timeDifferenceNow <= timestampThreshold;
-    });
-    
-    const roomSwipeEvents = swipeEvents.filter(swipeEvent => {
-        return swipeEvent.code === code && swipeEvent.id !== latestSwipeEvent.id;
-    });
-
+    const timesThreshold = 5000;
+    swipeEvents = swipeEvents.filter(({ timestamp }) => Math.abs(timestamp - latestSwipeEvent.timestamp) <= timesThreshold);
+    const roomSwipeEvents = swipeEvents.filter(swipeEvent => swipeEvent.code === code && swipeEvent.id !== latestSwipeEvent.id);
 
     if (roomSwipeEvents.length > 0) {
-        for (let i = 0; i < roomSwipeEvents.length; i++) {
-            const timeDifference = Math.abs(roomSwipeEvents[i].timestamp - latestSwipeEvent.timestamp);
-            if (timeDifference <= timestampThreshold) {
-                const clientA = rooms[code].clients[swipeEvents[i].id];
-                const clientB = rooms[code].clients[latestSwipeEvent.id];
+        for (let i = roomSwipeEvents.length - 1; i >= 0; i--) {
+            const clientA = rooms[code].clients[swipeEvents[i].id];
+            const clientB = rooms[code].clients[latestSwipeEvent.id];
 
-                if (clientA && clientB) {
-                    const relPos = calculateRelPos(clientA, clientB, swipeEvents[i].data, latestSwipeEvent.data);
-                    rooms[code].clients[latestSwipeEvent.id].coords = relPos.coords;
-                    rooms[code].clients[latestSwipeEvent.id].rotation = (relPos.rotation + clientA.rotation + 180) % 360;;
-                    updateRoomCanvas(code);
+            if (clientA && clientB) {
+                if (clientA.connected && clientB.connected) continue;
 
-                    swipeEvents.splice(swipeEvents.indexOf(roomSwipeEvents[i]), 1);
-                    return;
-                }
+                let primaryClient = !clientB.connected ? clientA : clientB;
+                let secondaryClient = !clientB.connected ? clientB : clientA;
+                let swipeA = !clientB.connected ? swipeEvents[i].data : latestSwipeEvent.data;
+                let swipeB = !clientB.connected ? latestSwipeEvent.data : swipeEvents[i].data;
+
+                input = { clientA: primaryClient, swipeA, clientB: secondaryClient, swipeB };
+                const relPos = calculateRelPos(input);
+
+                secondaryClient.coords = relPos.coords;
+                secondaryClient.rotation = (relPos.rotation + clientA.rotation + 180) % 360;
+
+                updateRoomCanvas(code);
+                swipeEvents.splice(swipeEvents.indexOf(roomSwipeEvents[i]), 1);
+
+                secondaryClient.connected = primaryClient.connected = true;
+                return;
             }
         }
     }
 
     swipeEvents.push(latestSwipeEvent);
-};
-const calculateRelPos = (clientA, clientB, swipeA, swipeB) => {
-    const angleDiff = roundAngle(swipeB.angle) - roundAngle(swipeA.angle);    // deg
-    const coords = [];
-
-    for (let i = 0; i < 4; i++) {
+}
+const calculateRelPos = ({ clientA, swipeA, clientB, swipeB }) => {
+    const angleDiff = normalizeAngle(swipeB.angle - swipeA.angle);                                 // deg
+    const coords = Array.from({ length: 10 }, (_, i) => {
         const coord = getScreenCoord(i, clientB);
-        const relCoord = calculateRelCoords(coord, angleDiff, clientA, clientB, swipeA, swipeB);
-        coords.push(relCoord);
-    }
+        return calculateRelCoords(coord, angleDiff, clientA, clientB, swipeA, swipeB)
+    })
 
     return { coords, rotation: angleDiff };
 }
 const calculateRelCoords = (coord, angleDiff, clientA, clientB, swipeA, swipeB) => {
-    const { minX, minY } = getExtremeCoords(clientA.coords);
-    const centerAX = minX + clientA.width / 2;
-    const centerAY = minY + clientA.height / 2;
+    const { minX, maxX, minY, maxY } = getExtremeCoords(clientA.coords);
+    const centerAX = minX + (maxX - minX) / 2;
+    const centerAY = minY + (maxY - minY) / 2;
     const centerBX = clientB.width / 2;
     const centerBY = clientB.height / 2;
 
@@ -152,7 +131,7 @@ const calculateRelCoords = (coord, angleDiff, clientA, clientB, swipeA, swipeB) 
     posY += centerAY - centerBY;
 
     // move screen B by swipe A
-    const deltaAX = swipeA.x - clientA.width / 2
+    const deltaAX = swipeA.x - clientA.width / 2;
     const deltaAY = swipeA.y - clientA.height / 2;
 
     switch (clientA.rotation) {
@@ -179,22 +158,12 @@ const updateRoomCanvas = (code) => {
     const clients = Object.values(rooms[code].clients);
     if (clients.length === 0) return;
 
-    const allCoords = [];
-    clients.forEach(client => {
-        allCoords.push(...client.coords);
-    });
-
+    const allCoords = clients.flatMap(client => client.coords);
     const { minX, minY, maxX, maxY } = getExtremeCoords(allCoords);
 
-    const shiftX = minX;                                                      // shift coords so that lowest value is origin
-    const shiftY = minY;
-
-    clients.forEach(client => {
-        client.coords = client.coords.map(coord => ({
-            x: coord.x - shiftX,
-            y: coord.y - shiftY
-        }));
-    });
+    // shift coords so that lowest value is origin
+    const shiftX = minX, shiftY = minY;
+    clients.forEach(client => client.coords.map(({ x, y }) => ({ x: x - shiftX, y: y - shiftY })));
 
     rooms[code].canvas = { width: maxX - minX, height: maxY - minY };
     io.to(code).emit(`updateCanvas`, rooms[code]);
@@ -206,17 +175,21 @@ io.on(`connection`, socket => {
     socket.on(`connectToRoom`, (code, data) => {
         socket.join(code);
         data.id = socket.id;
+        data.connected = false;
         addClientToRoom(code, data);
         io.to(code).emit(`room`, rooms[code]);
     });
 
     socket.on(`swipe`, (code, data, timestamp) => {
-        const swipeEvent = { id: socket.id, code, data, timestamp };
-        calculateSimultaneousSwipes(code, swipeEvent);
+        calculateSimultaneousSwipes(code, { id: socket.id, code, data, timestamp });
     });
 
-    socket.on(`attractions`, (code, square) => {
-        io.to(code).emit(`attractions`, square);
+    socket.on(`updateForces`, (code, forces, square) => {
+        io.to(code).emit(`updateForces`, forces, square);
+    })
+
+    socket.on(`boxOnScreen`, (targetId, square, forces) => {
+        io.to(targetId).emit(`boxOnScreen`, square, forces, socket.id);
     })
 
     socket.on(`disconnect`, () => {
