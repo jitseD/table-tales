@@ -10,81 +10,100 @@
     <title>Dancers</title>
 </head>
 
-<body class="body body__dancers">
-    <section class="section dancer dancer__alice">
-        <h1 class="dancer_name"><span class="dancer__firstname">Alice</span> <span class="dancer__surname">Pieri</span>
-        </h1>
-        <img src="./assets/img/dancer_alice.png" alt="Picture of Alice Pieri with graphics in the background" class="dancer__img">
-        <div class="dancer_wrapper">
-            <p class="dancer__title">Reverie of Resilience</p>
-        <p class="dancer__author">-Alice Pieri</p>
-        <p class="dancer__text">A powerful ensemble performance that resonates with the strength and courage of the
-            human
-            spirit</p>
-        </div>
-    </section>
-
-        <section class="section dancer dancer__dalma">
-            <h1 class="dancer_name"><span class="dancer__firstname dalma">Dalma</span> <span class="dancer__surname">Doman</span>
-            </h1>
-            <img src="./assets/img/dancer_dalma.png" alt="Picture of Dalma Doman with graphics in the background"
-                class="dancer__img">
-            <div class="dancer_wrapper">
-                <p class="dancer__title">Echoes of Silence</p>
-                <p class="dancer__author">-Dalma Doman</p>
-                <p class="dancer__text">A deeply emotional piece exploring the themes of loss and memory, showcasing Alice's fluid and expressive movement style</p>
-            </div>
-        </section>
-
-            <section class="section dancer dancer__lorenzo">
-                <h1 class="dancer_name"><span class="dancer__firstname lorenzo">Lorenzo</span> <span class="dancer__surname">Cimarelli</span>
-                </h1>
-                <img src="./assets/img/dancer_lorenzo.png" alt="Picture of Lorenzo Cimarelli with graphics in the background"
-                    class="dancer__img">
-                <div class="dancer_wrapper">
-                    <p class="dancer__title">Reverie of Resilience</p>
-                    <p class="dancer__author">-Lorenzo Cimarelli</p>
-                    <p class="dancer__text">A powerful ensemble performance that resonates with the strength and courage of the
-                        human
-                        spirit</p>
-                </div>
-            </section>
-
-                <section class="section dancer dancer__nico">
-                    <h1 class="dancer_name"><span class="dancer__firstname nico">Nico</span> <span class="dancer__surname">Ameduni</span>
-                    </h1>
-                    <img src="./assets/img/dancer_nico.png" alt="Picture of Nico Ameduni with graphics in the background"
-                        class="dancer__img">
-                    <div class="dancer_wrapper">
-                        <p class="dancer__title">Reverie of Resilience</p>
-                        <p class="dancer__author">-Nico Ameduni</p>
-                        <p class="dancer__text">A powerful ensemble performance that resonates with the strength and courage of the
-                            human
-                            spirit</p>
-                    </div>
-                </section>
-
-    <section class="section instruction">
-        <h1 class="header instruction__header"><strong class="text_bold">CHOOSE</strong> a story!</h1>
-        <p class="instruction__text">Each screen shows a personal story of a <strong>Scapino Ballet dancer</strong>. In
-            a group, <strong>decide</strong>
-            which dance performance you would like
-            to see by tapping on one of them.
+<body class="body body--dancers">
+    <section class="section section--instruction">
+        <h1 class="header instruction__header center"><strong class="bold">CHOOSE</strong> a story!</h1>
+        <p class="instruction__text">
+            Each screen shows a personal story of a <strong class="bold">Scapino dancer</strong>. In group,
+            <strong class="bold">decide</strong> which dance you would like to see by tapping on that screen.
         </p>
-        <div>
-            <p class="instruction__question">Want to choose between more options?</p>
-            <p class="instruction__text">You’ll need more screens! Ask people at the table next to you, to
-                <strong>unlock</strong> more dancer stories.
+        <div class="instruction__tip">
+            <p class="instruction__question bold red">Want to choose between more options?</p>
+            <p class="instruction__text">
+                You'll need more screens! Ask people at the table next to you to join, to <strong
+                    class="bold">unlock</strong> more dancers.
             </p>
         </div>
 
-        <p class="instruction__underlined">Your pick</p>
-        <div class="instruction__wrapper">
-            <p class="instruction__title">Reverie of Resilience</p>
-            <p class="instruction__name">by Alice Pieri</p>
+        <div class="instructions__picked">
+            <p class="picked__underlined bold">Your pick</p>
+            <div class="img__wrapper--picked">
+                <p class="picked__title bold">Reverie of Resilience</p>
+                <p class="picked__dancer">by Alice Pieri</p>
+                <img class="picked__img" src="./assets/img/dancer_alice_small.png" alt="Alice Pieri">
+            </div>
+            <p class="picked__end">turn the lights off and ...</p>
+            <a class="instruction__btn btn__primary btn" href="./dance.html">start performance</a>
         </div>
-        <p class="instruction__end">turn the lights off and ...</p>
-        <a href="./dancer.html" class="connect__btn btn__primary btn">start performance</a>
+    </section>
+
+    <section class="section section--dancer dancer__alice hide">
+        <div class="img__wrapper--dancer">
+            <h1 class="header dancer__name">
+                <span class="dancer__firstname">Alice</span>
+                <span class="dancer__lastname">Pieri</span>
+            </h1>
+            <img class="dancer__img" src="./assets/img/dancer_alice_big.png" alt="Alice Pieri">
+        </div>
+        <div class="dancer__wrapper">
+            <p class="dancer__title bold">Reverie of Resilience</p>
+            <p class="dancer__author">Alice Pieri</p>
+            <p class="dancer__text">
+                A powerful ensemble performance that resonates with the strength and courage of the human spirit
+            </p>
+        </div>
+    </section>
+
+    <section class="section section--dancer dancer__dalma hide">
+        <div class="img__wrapper--dancer">
+            <h1 class="header dancer__name">
+                <span class="dancer__firstname dalma">Dalma</span>
+                <span class="dancer__lastname">Doman</span>
+            </h1>
+            <img class="dancer__img" src="./assets/img/dancer_dalma_big.png" alt="Alice Pieri">
+        </div>
+        <div class="dancer__wrapper">
+            <p class="dancer__title bold">Echoes of Silence</p>
+            <p class="dancer__author">Dalma Doman</p>
+            <p class="dancer__text">
+                A deeply emotional piece exploring the themes of loss and memory, showcasing Alice's fluid and
+                expressive movement style
+            </p>
+        </div>
+    </section>
+
+    <section class="section section--dancer dancer__lorenzo hide">
+        <div class="img__wrapper--dancer">
+            <h1 class="header dancer__name">
+                <span class="dancer__firstname lorenzo">Lorenzo</span>
+                <span class="dancer__lastname">Cimarelli</span>
+            </h1>
+            <img class="dancer__img" src="./assets/img/dancer_lorenzo_big.png" alt="Lorenzo Cimarelli">
+        </div>
+        <div class="dancer__wrapper">
+            <p class="dancer__title bold">Reverie of Resilience</p>
+            <p class="dancer__author">Lorenzo Cimarelli</p>
+            <p class="dancer__text">
+                A powerful ensemble performance that resonates with the strength and courage of the human spirit
+            </p>
+        </div>
+    </section>
+
+    <section class="section section--dancer dancer__nico hide">
+        <div class="img__wrapper--dancer">
+            <h1 class="header dancer__name">
+                <span class="dancer__firstname nico">Nico</span>
+                <span class="dancer__lastname">Ameduni</span>
+            </h1>
+            <img class="dancer__img" src="./assets/img/dancer_nico_big.png" alt="Nico Ameduni">
+        </div>
+        <div class="dancer__wrapper">
+            <p class="dancer__title bold">Reverie of Resilience</p>
+            <p class="dancer__author">Nico Ameduni</p>
+            <p class="dancer__text">
+                A powerful ensemble performance that resonates with the strength and courage of the human spirit
+            </p>
+        </div>
     </section>
 </body>
 
