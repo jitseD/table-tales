@@ -59,8 +59,10 @@ const removeClientFromRoom = (code, clientId) => {
     delete rooms[code].clients[clientId];
     updateRoomCanvas(code);
 
-    if (Object.keys(rooms[code].clients).length === 0) delete rooms[code];
+    if (Object.keys(rooms[code].clients).length === 0) return delete rooms[code];
     else if (rooms[code].host === clientId) rooms[code].host = Object.keys(rooms[code].clients)[0];
+
+    io.to(code).emit(`room`, rooms[code]);
 }
 
 // ----- swipe connecting ----- //
