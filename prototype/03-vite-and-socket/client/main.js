@@ -6,15 +6,12 @@ const $otherIds = document.querySelector('.otherIds');
 let socket;
 
 const init = () => {
-    socket = io('https://localhost:443', {
-        rejectUnauthorized: false,
-        transports: ['websocket']  // Force the client to use WebSocket
-    });
+    socket = io('https://localhost:443', { transports: ['websocket'] })
 
     socket.on('connect', () => {
         console.log(`✅ connected to the server`);
         $myId.textContent = socket.id;
-    });
+    })
 
     socket.on('clients', (clients) => {
         console.log(clients);
@@ -26,11 +23,11 @@ const init = () => {
                 $otherIds.appendChild($otherId);
             }
         }
-    });
+    })
 
     socket.on('disconnect', () => {
         console.log(`❌ disconnected from the server`);
-    });
+    })
 };
 
 init();

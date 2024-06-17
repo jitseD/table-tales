@@ -1,8 +1,8 @@
 import express from 'express';
 import https from 'https';
 import fs from 'fs';
-import cors from 'cors';
-import { Server as SocketServer } from 'socket.io';
+// import cors from 'cors';
+import { Server } from 'socket.io';
 
 const app = express();
 
@@ -12,23 +12,10 @@ const options = {
 };
 
 const server = https.createServer(options, app);
-const io = new SocketServer(server, {
-    cors: {
-        origin: "https://localhost:5173",
-        methods: ["GET", "POST"],
-        credentials: true
-    }
-});
+const io = new Server(server);
 
 const port = 443;
 const clients = {};
-
-// Use CORS middleware
-app.use(cors({
-    origin: "https://localhost:5173",
-    methods: ["GET", "POST"],
-    credentials: true
-}));
 
 app.use(express.static('public'));
 
@@ -42,7 +29,7 @@ io.on('connection', (socket) => {
     clients[socket.id] = { id: socket.id };
     console.log(clients);
 
-    socket.emit('clients', clients);
+    io.emit('clients', clients);
 
     socket.on('disconnect', () => {
         console.log(`❌ disconnection ${socket.id}`);
