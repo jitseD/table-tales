@@ -231,22 +231,21 @@ button {
 .body--steps {
     grid-template-rows: 1fr 2fr;
     background-repeat: no-repeat;
+    background-image: url(../assets/img/step_bg.png);
     background-size: 100%;
+    transition: background-position 0.5s ease-in-out;
 }
 
 .body--steps:has(.step1.visible) {
-    background-image: url(../assets/img/step1_bg.png);
-    background-position: top;
+    background-position: top -30vw center;
 }
 
 .body--steps:has(.step2.visible) {
-    background-image: url(../assets/img/step2_bg.png);
     background-position: center;
 }
 
 .body--steps:has(.step3.visible) {
-    background-image: url(../assets/img/step3_bg.png);
-    background-position: bottom;
+    background-position: bottom -30vw center;
 }
 
 .steps__header {
@@ -266,16 +265,20 @@ button {
 }
 
 .section--step {
+    grid-column: 1;
+    grid-row: 2;
     align-self: flex-start;
-    display: none;
+    display: grid;
+    opacity: 0;
     grid-template-rows: 50% 50%;
     height: 100%;
+    transition: opacity 0.5s ease-in-out;
 }
 
 .step1.visible,
 .step2.visible,
 .step3.visible {
-    display: grid;
+    opacity: 1;
 }
 
 .img__wrapper--step {

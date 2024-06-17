@@ -52,7 +52,7 @@ const removeClientFromRoom = (code, clientId) => {
 }
 
 io.on(`connection`, socket => {
-    console.log(`✅ connection`);
+    console.log(`✅ connection `, socket.id);
 
     socket.on(`connectToRoom`, (code, data) => {
         socket.join(code);
@@ -63,7 +63,7 @@ io.on(`connection`, socket => {
     });
 
     socket.on(`disconnect`, () => {
-        console.log(`❌ disconnection`);
+        console.log(`❌ disconnection `, socket.id);
         for (const code in rooms) {
             socket.leave(code);
             removeClientFromRoom(code, socket.id);
