@@ -242,7 +242,7 @@ button {
     grid-column: 1;
     grid-row: 1;
     opacity: 0;
-    transition: opacity 0.5s ease-in-out;
+    transition: opacity 0.5s ease-in-out, background-position 0.5s ease-in-out;
     z-index: -10;
 }
 
@@ -269,7 +269,12 @@ button {
     transform-origin: top left;
 }
 
-.app__back{
+.connection__line {
+    width: 12px;
+    object-fit: fill;
+}
+
+.app__back {
     z-index: 20;
 }
 
@@ -285,15 +290,15 @@ button {
 }
 
 .body--steps:has(.step1.visible) {
-    background-position: top -30vw center;
+    background-position: 0 -30vw;
 }
 
 .body--steps:has(.step2.visible) {
-    background-position: center;
+    background-position: center center;
 }
 
 .body--steps:has(.step3.visible) {
-    background-position: bottom -30vw center;
+    background-position: 0 calc(100% + 30vw);
 }
 
 .steps__header {

@@ -4,15 +4,31 @@ import { getRoomCode, getExtremeCoords } from './shared/utils.js';
 const $pages = document.querySelectorAll(`.page`);
 const $steps = document.querySelectorAll(`.section--step`);
 const $appNav = document.querySelector(`.app__back`);
+const $canvas = document.querySelector(`.canvas`);
+const $connectedNumber = document.querySelector(`.connect__number`);
+const $connectBtn = document.querySelector(`.connect__btn`);
 
 // ----- global variables ----- //
 let socket;
-const room = { code: null, hostId: null };
-let currentStepIndex = 1;
+const room = { code: null, hostId: null, clients: {} };
+let currentStepIndex = 0, currentPageIndex = 1;
 let isPhoneDown = false;
-let timeout;
+let myCoords, otherCoords;
+const tolerance = 50;
+const canvas = { ctx: null, height: null, width: null };
 const screenDimensions = { height: innerHeight, width: innerWidth };
-const swipe = { start: { x: null, y: null }, end: { x: null, y: null }, angle: null, isSwiping: false, isMouseDown: false, }
+const swipe = { start: { x: null, y: null }, end: { x: null, y: null }, angle: null, isSwiping: false, isMouseDown: false, };
+
+// ----- miscellaneous ----- //
+const requestWakeLock = async () => {
+    if (`wakeLock` in navigator) {
+        try {
+            const wakeLock = await navigator.wakeLock.request(`screen`);
+        } catch (err) {
+            if (err.name != `NotAllowedError`) console.error(`${err.name}, ${err.message}`);
+        }
+    }
+}
 
 // ----- calculation functions ----- //
 const clampValue = (value, min, max) => {
@@ -26,18 +42,64 @@ const updateSteps = () => {
 
     if (currentStepIndex === 0) $appNav.textContent = `go back`;
     else $appNav.textContent = `step 0${currentStepIndex}`;
+
+    if (currentStepIndex === 0) {
+        $canvas.removeEventListener(`mousedown`, handleMouseDown);
+        $canvas.removeEventListener(`mousemove`, handleMouseMove);
+        $canvas.removeEventListener(`mouseup`, handleMouseUp);
+
+        $canvas.removeEventListener(`touchstart`, handleTouchStart);
+        $canvas.removeEventListener(`touchmove`, handleTouchMove);
+        $canvas.removeEventListener(`touchend`, handleTouchEnd);
+    } else {
+        $canvas.addEventListener(`mousedown`, handleMouseDown);
+        $canvas.addEventListener(`mousemove`, handleMouseMove);
+        $canvas.addEventListener(`mouseup`, handleMouseUp);
+
+        $canvas.addEventListener(`touchstart`, handleTouchStart);
+        $canvas.addEventListener(`touchmove`, handleTouchMove);
+        $canvas.addEventListener(`touchend`, handleTouchEnd);
+    }
+}
+const updatePages = () => {
+    $pages.forEach(page => page.classList.remove(`visible`));
+    $pages[currentPageIndex].classList.add(`visible`);
+
+    switch (currentPageIndex) {
+        case 0:
+            if (currentStepIndex === 0) $appNav.textContent = `go back`;
+            else $appNav.textContent = `step 0${currentStepIndex}`;
+
+            $canvas.style.pointerEvents = `unset`;
+            break;
+        case 1:
+            $appNav.textContent = `instructions`;
+            $canvas.style.pointerEvents = `none`;
+
+            if (socket.id === room.hostId) {
+                $connectBtn.classList.remove(`hide`);
+                $connectBtn.addEventListener(`click`, handleConnectBtnClick);
+            } else {
+                $connectBtn.classList.add(`hide`);
+                $connectBtn.removeEventListener(`click`, handleConnectBtnClick);
+            }
+            break;
+        default:
+            $appNav.textContent = `go back`;
+            break;
+    }
 }
 
 // ----- steps ----- //
 const handleOrientationEvent = e => {
     const threshold = 5;
+    let pageTimeout;
 
     if (Math.abs(e.beta) < threshold) {
         if (!isPhoneDown) {
             isPhoneDown = true;
-            console.log("Phone placed down");
-            clearTimeout(timeout);
-            timeout = setTimeout(() => {
+            clearTimeout(pageTimeout);
+            pageTimeout = setTimeout(() => {
                 currentStepIndex = 1;
                 updateSteps();
             }, 500);
@@ -45,10 +107,10 @@ const handleOrientationEvent = e => {
     } else {
         if (isPhoneDown) {
             isPhoneDown = false;
-            clearTimeout(timeout);
-            timeout = setTimeout(() => {
+            clearTimeout(pageTimeout);
+            pageTimeout = setTimeout(() => {
                 currentStepIndex = 0;
-                updateSteps()
+                updateSteps();
             }, 500);
         }
     }
@@ -67,69 +129,160 @@ const getDeviceOrientation = async () => {
     } else console.error('not suppoerted');
 }
 const handleAppNavClick = () => {
-    if (currentStepIndex === 0) {
-        window.location.href = 'index.html';
+    if (currentPageIndex === 0) {
+        if (currentStepIndex === 0) {
+            window.location.href = 'index.html';
+        } else {
+            currentStepIndex--;
+            updateSteps();
+        }
     } else {
-        currentStepIndex--;
-        updateSteps();
+        currentPageIndex--;
+        currentStepIndex = 0;
+        updatePages();
     }
 }
 
-// ----- socket ----- //
-const socketInit = () => {
-    connectSocket();
-    if (socket) {
-        socket.on('clients', (clients) => console.log(clients));
-        socket.on(`room`, (room) => setRoomHost(room.host));
+// ----- dancers ----- //
+const handleConnectBtnClick = e => {
+    currentPageIndex = 2;
+    updatePages();
+    console.log(currentPageIndex);
+}
 
-        socket.on(`updateCanvas`, (room) => {
-            if (room.clients[socket.id].connected) {
-                currentStepIndex = 2;
-                updateSteps();
-            }
-        })
 
-        socket.on('disconnect', () => {
-            console.log(`❌ disconnected from the server`);
-        })
+// ----- coords ----- //
+const updateCoords = (socketRoom) => {
+    otherCoords = [];
+
+    Object.values(socketRoom.clients).map((client) => {
+        if (client.id === socket.id) myCoords = client.coords;
+        else otherCoords.push(client.coords);
+        room.clients[client.id] = { coords: client.coords, id: client.id, boxOnScreen: false };
+    });
+}
+
+// ----- canvas ----- //
+const setCanvas = (size) => {
+    canvas.width = size.width;
+    canvas.height = size.height;
+
+    $canvas.style.width = `${canvas.width}px`;
+    $canvas.style.height = `${canvas.height}px`;
+}
+const positionCanvas = (rotation, coords) => {
+    const { minX, minY } = getExtremeCoords(coords);
+
+    $canvas.style.width = `${canvas.width}px`;
+    $canvas.style.height = `${canvas.height}px`;
+    $canvas.style.rotate = `${rotation}deg`;
+
+    switch (rotation) {
+        case 90:
+            $canvas.style.left = `${screenDimensions.width + minY}px`;
+            $canvas.style.top = `${-minX}px`;
+            break;
+        case 180:
+            $canvas.style.left = `${screenDimensions.width + minX}px`
+            $canvas.style.top = `${screenDimensions.height + minY}px`;
+            break;
+        case 270:
+            $canvas.style.top = `${screenDimensions.height + minX}px`;
+            $canvas.style.left = `${-minY}px`;
+            break;
+        default:
+            $canvas.style.left = `${-minX}px`;
+            $canvas.style.top = `${-minY}px`;
+            break;
     }
 }
-const connectSocket = () => {
-    // socket = io.connect('https://localhost:443', { transports: ['websocket'] });
-    socket = io.connect(`/`);
-    socket.on('connect', () => {
-        alert(socket.id);
-        console.log(`✅ connected to the server`);
-        socket.emit(`connectToRoom`, room.code, screenDimensions);
-    })
-}
-const setRoomHost = (hostId) => {
-    console.log(hostId);
-    if (hostId === socket.id) room.hostId = true;
-    else room.hostId = false;
-}
+const showConnectionLines = () => {
+    const $connectionLines = document.querySelectorAll(`.connection__line`);
+    $connectionLines.forEach(line => line.remove());
+    const connectionLines = [];
 
-// ----- connect phones ----- //
-const connectPhones = () => {
-    const $body = document.querySelector(`.canvas`);
+    const screenA = getExtremeCoords(myCoords);
 
-    if (currentStepIndex > 0) {
-        $body.addEventListener(`mousedown`, handleMouseDown);
-        $body.addEventListener(`mousemove`, handleMouseMove);
-        $body.addEventListener(`mouseup`, handleMouseUp);
+    for (let i = 0; i < otherCoords.length; i++) {
+        const screenB = getExtremeCoords(otherCoords[i]);
 
-        $body.addEventListener(`touchstart`, handleTouchStart);
-        $body.addEventListener(`touchmove`, handleTouchMove);
-        $body.addEventListener(`touchend`, handleTouchEnd);
+        const line = getConnectionLine(screenA, screenB);
+        if (line) connectionLines.push(line);
     }
+
+    connectionLines.forEach(line => {
+        const lineImg = document.createElement(`img`);
+        lineImg.classList.add(`connection__line`);
+        lineImg.setAttribute(`src`, `./assets/img/line_connection.png`);
+
+        lineImg.style.rotate = `${line.rotation}deg`;
+        lineImg.style.height = `${line.width !== 0 ? line.width : line.height}px`;
+        lineImg.style.top = `${line.y}px`;
+        lineImg.style.left = `${line.x}px`;
+
+        $canvas.appendChild(lineImg);
+    });
+}
+const getConnectionLine = (screenA, screenB) => {
+    const lineWidth = 12;
+
+    if (Math.abs(screenA.minX - screenB.maxX) <= tolerance) return {            // leftArightB
+        x: screenA.minX, y: Math.max(screenA.minY, screenB.minY),
+        width: Math.abs(screenA.minX - screenA.minX),
+        height: Math.abs(Math.max(screenA.minY, screenB.minY) - Math.min(screenA.maxY, screenB.maxY)),
+        rotation: 0,
+        type: `left`
+    }
+
+    if (Math.abs(screenA.maxX - screenB.minX) <= tolerance) return {            // rightAleftB
+        x: screenA.maxX - lineWidth, y: Math.max(screenA.minY, screenB.minY),
+        width: Math.abs(screenA.maxX - screenA.maxX),
+        height: Math.abs(Math.max(screenA.minY, screenB.minY) - Math.min(screenA.maxY, screenB.maxY)),
+        rotation: 0,
+        type: `right`
+    }
+
+    if (Math.abs(screenA.minY - screenB.maxY) <= tolerance) return {            // topAbottomB
+        x: Math.max(screenA.minX, screenB.minX), y: screenA.minY + lineWidth,
+        width: Math.abs(Math.max(screenA.minX, screenB.minX) - Math.min(screenA.maxX, screenB.maxX)),
+        height: Math.abs(screenA.minY - screenA.minY),
+        rotation: -90,
+        type: `top`
+    }
+
+    if (Math.abs(screenA.maxY - screenB.minY) <= tolerance) return {            // bottomAtopB
+        x: Math.max(screenA.minX, screenB.minX), y: screenA.maxY,
+        width: Math.abs(Math.max(screenA.minX, screenB.minX) - Math.min(screenA.maxX, screenB.maxX)),
+        height: Math.abs(screenA.maxY - screenA.maxY),
+        rotation: -90,
+        type: `bottom`
+    }
+
+    return null;
+}
+
+// ----- swipe ----- //
+const determineSwipeAngle = () => {
+    const deltaX = swipe.end.x - swipe.start.x;
+    const deltaY = swipe.end.y - swipe.start.y;
+
+    if (Math.abs(deltaX) > Math.abs(deltaY)) swipe.angle = deltaX > 0 ? 0 : 180;            // horizontal
+    else swipe.angle = deltaY > 0 ? 90 : 270;                                               // vertical
+
+}
+const handleSwipe = () => {
+    determineSwipeAngle();
+
+    const data = { x: swipe.end.x, y: swipe.end.y, angle: swipe.angle };
+    console.log(`Swiped in direction:`, data);
+
+    socket.emit(`swipe`, room.code, data, Date.now());
 }
 
 // ----- mouse events ----- //
 const handleMouseDown = e => {
     swipe.start = { x: e.clientX, y: e.clientY }
     swipe.isMouseDown = true;
-    console.log(e);
-
 }
 const handleMouseMove = e => {
     if (!swipe.isMouseDown) return;
@@ -170,31 +323,66 @@ const handleTouchEnd = e => {
     swipe.isSwiping = false;
 }
 
-// ----- swipe ----- //
-const determineSwipeAngle = () => {
-    const deltaX = swipe.end.x - swipe.start.x;
-    const deltaY = swipe.end.y - swipe.start.y;
+// ----- socket ----- //
+const connectSocket = () => {
+    socket = io.connect(`/`);
+    socket.on('connect', () => {
+        console.log(`✅ connected to the server`);
+        socket.emit(`connectToRoom`, room.code, screenDimensions);
+    })
 
-    if (Math.abs(deltaX) > Math.abs(deltaY)) swipe.angle = deltaX > 0 ? 0 : 180;            // horizontal
-    else swipe.angle = deltaY > 0 ? 90 : 270;                                               // vertical
-
+    if (socket) socketListeners();
+    else alert(`socket connection not working`);
 }
-const handleSwipe = () => {
-    determineSwipeAngle();
+const socketListeners = () => {
+    socket.on(`room`, (socketRoom) => {
+        room.hostId = socketRoom.host
+        updatePages();
+    });
 
-    const data = { x: swipe.end.x, y: swipe.end.y, angle: swipe.angle };
-    console.log(`Swiped in direction:`, data);
+    socket.on(`updateCanvas`, (socketRoom) => {
+        room.hostId = socketRoom.host
+        updateCoords(socketRoom);
+        setCanvas(socketRoom.canvas);
+        positionCanvas(socketRoom.clients[socket.id].rotation, myCoords);
 
-    socket.emit(`swipe`, room.code, data, Date.now());
+        if (socketRoom.clients[socket.id].connected) {
+            currentStepIndex = 2;
+            updateSteps();
+            showConnectionLines();
+        }
+
+        const totalClients = Object.keys(socketRoom.clients).length;
+        const totalConnectedClients = Object.keys(Object.values(socketRoom.clients).filter((client) => {
+            if (client.connected) return client
+        })).length;
+        if (totalClients === totalConnectedClients) {
+            currentPageIndex = 1;
+            setTimeout(() => updatePages(), 1000);
+        }
+
+        $connectedNumber.textContent = String(totalConnectedClients).padStart(2, '0');
+    })
+
+    socket.on('disconnect', () => {
+        console.log(`❌ disconnected from the server`);
+    })
 }
 
 const appInit = () => {
     room.code = getRoomCode();
-    socketInit();
-    connectPhones();
 
+    connectSocket();
+
+    updateSteps();
+    updatePages();
+
+    // ---- steps ---- //
     getDeviceOrientation();
     $appNav.addEventListener(`click`, handleAppNavClick);
+
+    // ----- miscellaneous ----- //
+    requestWakeLock();
 }
 
 appInit();

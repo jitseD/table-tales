@@ -63,8 +63,6 @@ const removeClientFromRoom = (code, clientId) => {
 
     if (Object.keys(rooms[code].clients).length === 0) return delete rooms[code];
     else if (rooms[code].host === clientId) rooms[code].host = Object.keys(rooms[code].clients)[0];
-
-    io.to(code).emit(`room`, rooms[code]);
 }
 
 // ----- swipe connecting ----- //
@@ -183,9 +181,15 @@ io.on('connection', (socket) => {
     })
 
     socket.on(`swipe`, (code, data, timestamp) => {
-        console.log(`swipe`);
         calculateSimultaneousSwipes(code, { id: socket.id, code, data, timestamp });
     })
+
+    // socket.on(`disconnectCanvas`, (code) => {
+    //     removeClientFromRoom(code, socket.id);
+    //     data.id = socket.id;
+    //     data.connected = false;
+    //     addClientToRoom(code, data);
+    // })
 
     socket.on('disconnect', () => {
         console.log(`❌ disconnection`);
