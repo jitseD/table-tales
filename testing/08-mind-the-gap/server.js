@@ -46,7 +46,7 @@ const getExtremeCoords = (coords) => {
 
 // ----- socket room ----- //
 const addClientToRoom = (code, client) => {
-    const coords = Array.from({ length: 10 }, (_, i) => getScreenCoord(i, client));
+    const coords = Array.from({ length: 4 }, (_, i) => getScreenCoord(i, client));
     client.coords = coords;
     client.rotation = 0;
 

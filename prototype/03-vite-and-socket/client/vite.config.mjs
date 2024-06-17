@@ -6,18 +6,14 @@ import { resolve } from 'path';
 // https://localhost:443
 
 export default defineConfig({
-    site: 'https://jitsedekeyser.be',
-    base: '/vite-and-socket/',
+    // site: 'https://jitsedekeyser.be',
+    // base: '/vite-and-socket/',
     build: {
         rollupOptions: {
             input: {
                 index: resolve(__dirname, 'index.html'),
-                connect: resolve(__dirname, 'connect.html'),
-                dance: resolve(__dirname, 'dance.html'),
-                dancers: resolve(__dirname, 'dancers.html'),
-                emotions: resolve(__dirname, 'emotions.html'),
+                app: resolve(__dirname, 'app.html'),
                 ending: resolve(__dirname, 'ending.html'),
-                steps: resolve(__dirname, 'steps.html'),
             },
         },
     },
@@ -28,7 +24,7 @@ export default defineConfig({
         },
         proxy: {
             '/socket.io': {
-                target: 'https://109.106.244.62:3000',
+                target: 'https://localhost:443',
                 ws: true,
                 secure: false,
                 changeOrigin: true

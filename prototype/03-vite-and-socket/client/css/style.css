@@ -102,6 +102,12 @@ a {
     color: var(--color-black);
 }
 
+a,
+button,
+.vid__wrapper--ending {
+    cursor: pointer;
+}
+
 .bold {
     font-weight: 700;
 }
@@ -226,27 +232,68 @@ button {
     max-width: 90%;
 }
 
+/* ----- app ----- */
+
+.body--app {
+    padding: 0;
+}
+
+.body--app>.page {
+    grid-column: 1;
+    grid-row: 1;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+    z-index: -10;
+}
+
+.body--app>.visible {
+    opacity: 1;
+    z-index: 10;
+}
+
+.canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    transform-origin: top left;
+    width: 100vw;
+    height: 100vh;
+}
+
+.canvas>* {
+    position: absolute;
+    z-index: -10;
+    top: 0;
+    left: 0;
+    transform-origin: top left;
+}
+
+.app__back{
+    z-index: 20;
+}
+
 /* ----- steps ----- */
 
 .body--steps {
     grid-template-rows: 1fr 2fr;
     background-repeat: no-repeat;
+    background-image: url(../assets/img/step_bg.png);
     background-size: 100%;
+    transition: background-position 0.5s ease-in-out;
+    pointer-events: none;
 }
 
 .body--steps:has(.step1.visible) {
-    background-image: url(../assets/img/step1_bg.png);
-    background-position: top;
+    background-position: top -30vw center;
 }
 
 .body--steps:has(.step2.visible) {
-    background-image: url(../assets/img/step2_bg.png);
     background-position: center;
 }
 
 .body--steps:has(.step3.visible) {
-    background-image: url(../assets/img/step3_bg.png);
-    background-position: bottom;
+    background-position: bottom -30vw center;
 }
 
 .steps__header {
@@ -266,16 +313,20 @@ button {
 }
 
 .section--step {
+    grid-column: 1;
+    grid-row: 2;
     align-self: flex-start;
-    display: none;
+    display: grid;
+    opacity: 0;
     grid-template-rows: 50% 50%;
     height: 100%;
+    transition: opacity 0.5s ease-in-out;
 }
 
 .step1.visible,
 .step2.visible,
 .step3.visible {
-    display: grid;
+    opacity: 1;
 }
 
 .img__wrapper--step {
@@ -593,8 +644,10 @@ button {
 
 /* ----- emotions ----- */
 
-html:has(.body--emotions),
-.body--emotions {
+html:has(.body--emotions.visible),
+.body--emotions.visible,
+html:has(.body--dance.visible),
+.body--dance.visible {
     background-color: var(--color-black);
     color: var(--color-white);
     background-image: url(../assets/img/bg_dark.png);
