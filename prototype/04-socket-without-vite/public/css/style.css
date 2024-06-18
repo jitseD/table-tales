@@ -322,7 +322,8 @@ html:has(.body--dance.visible),
 }
 
 .body--app:has(.body--dancers.visible) .app__back,
-.body--app:has(.body--emotions.visible) .app__back {
+.body--app:has(.body--emotions.visible) .app__back,
+.body--app:has(.canvas.dance) .app__back {
     display: none;
 }
 

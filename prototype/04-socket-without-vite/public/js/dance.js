@@ -74,6 +74,7 @@ class Mover {
         this.mass = this.size;
         this.topSpeed = 10;
         this.fill = `black`;
+        this.lastTimestamp = 0;
     }
 
     update() {
@@ -102,6 +103,7 @@ class Mover {
 
             if (isOnScreen && client.id !== socket.id && !client.boxOnScreen) {
                 const forces = { attractions, repulsions }
+                this.lastTimestamp = $video.currentTime;
                 socket.emit(`boxOnScreen`, client.id, video, forces);
             }
 
@@ -275,6 +277,8 @@ export const danceInit = (socketData, roomData, canvasData) => {
     socket.on(`boxOnScreen`, (videoData, forcesData, fromId) => {
         setForces(forcesData)
         video = new Mover(videoData.pos, videoData.vel, videoData.acc);
+        const timeDiff = Math.abs($video.currentTime - videoData.lastTimestamp);
+        if (timeDiff > 0.5)  $video.currentTime = videoData.lastTimestamp;
 
         video.update();
         video.show();
