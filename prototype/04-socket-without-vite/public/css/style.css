@@ -170,7 +170,7 @@ button {
 
 .btn__back::before {
     content: "";
-    background-image: url(../assets/img/arrow_btn.png);
+    background-image: url(../assets/img/btn_arrow.svg);
     background-size: 100%;
     background-repeat: no-repeat;
     background-position: center;
@@ -192,7 +192,8 @@ button {
 
 .btn__next::after {
     content: "";
-    background-image: url(../assets/img/arrow_btn_flipped.png);
+    background-image: url(../assets/img/btn_arrow.svg);
+    transform: scaleX(-1);
     background-size: 100%;
     background-repeat: no-repeat;
     background-position: center;
@@ -335,7 +336,7 @@ html:has(.body.visible),
 }
 
 .canvas.dance .connection__line,
-.body--app:has(.body--emotions.visible) .connection__line, 
+.body--app:has(.body--emotions.visible) .connection__line,
 .body--app:has(.body--emotions.visible) .canvas {
     display: none;
 }
@@ -778,7 +779,7 @@ html:has(.body--dancers.visible) {
 
 /* ----- emotions ----- */
 
-.body--emotions{
+.body--emotions {
     background-image: url(../assets/img/bg_dark.png);
 }
 
@@ -1036,7 +1037,7 @@ html:has(.body--dancers.visible) {
     grid-column: 1;
     height: 0.5rem;
     width: 10rem;
-    background-image: url(../assets/img/ending_line.png);
+    background-image: url(../assets/img/ending_line.svg);
     background-size: contain;
     background-repeat: no-repeat;
 }
@@ -1116,7 +1117,7 @@ html:has(.body--dancers.visible) {
     grid-row: 1;
     content: "";
     display: block;
-    background-image: url(../assets/img/btn_play.svg);
+    background-image: url(../assets/img/btn_play.png);
     background-size: contain;
     background-position: center;
     width: 3.5rem;
