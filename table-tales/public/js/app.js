@@ -27,7 +27,7 @@ let currentStepIndex = 0, currentPageName = `steps`, currentDancerIndex = 0, cur
 let isPhoneDown = false;
 let myCoords, otherCoords;
 const dance = { totalDances: 3, currentDanceIndex: 0, emotion: `calm` };
-const tolerance = 100;
+const tolerance = 50;
 const canvas = { height: null, width: null };
 const screenDimensions = { height: innerHeight, width: innerWidth };
 const swipe = { start: { x: null, y: null }, end: { x: null, y: null }, angle: null, isSwiping: false, isMouseDown: false, };
