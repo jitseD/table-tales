@@ -4,6 +4,7 @@ import { danceInit } from './dance.js';
 // ----- selectors ----- //
 const $pages = document.querySelectorAll(`.page`);
 const $steps = document.querySelectorAll(`.section--step`);
+const $nextStep = document.querySelector(`.step__next`);
 const $appNav = document.querySelector(`.app__back`);
 const $canvas = document.querySelector(`.canvas`);
 const $connectedNumber = document.querySelector(`.connect__number`);
@@ -64,6 +65,7 @@ const updateSteps = () => {
         $canvas.removeEventListener(`touchstart`, handleTouchStart);
         $canvas.removeEventListener(`touchmove`, handleTouchMove);
         $canvas.removeEventListener(`touchend`, handleTouchEnd);
+        getDeviceOrientation();
     } else {
         $canvas.addEventListener(`mousedown`, handleMouseDown);
         $canvas.addEventListener(`mousemove`, handleMouseMove);
@@ -72,6 +74,8 @@ const updateSteps = () => {
         $canvas.addEventListener(`touchstart`, handleTouchStart);
         $canvas.addEventListener(`touchmove`, handleTouchMove);
         $canvas.addEventListener(`touchend`, handleTouchEnd);
+
+        $nextStep.classList.add(`hide`);
     }
 }
 const updateDancers = () => {
@@ -181,14 +185,19 @@ const handleOrientationEvent = e => {
         }
     }
 }
+const handleNextStepClick = e => {
+    currentStepIndex = 1;
+    updateSteps();
+}
 const getDeviceOrientation = async () => {
     if (typeof DeviceOrientationEvent != 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         try {
             const permissionState = await DeviceOrientationEvent.requestPermission();
             if (permissionState) window.addEventListener('deviceorientation', handleOrientationEvent);
             else console.error(); (`permission not granted`);
-        } catch (error) {
-            console.error(error);
+        } catch (e) {
+            $nextStep.classList.remove(`hide`);
+            $nextStep.addEventListener(`click`, handleNextStepClick);
         }
     } else if (window.DeviceOrientationEvent) {
         window.addEventListener('deviceorientation', handleOrientationEvent);

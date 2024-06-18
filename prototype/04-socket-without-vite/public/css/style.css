@@ -179,6 +179,28 @@ button {
     margin-top: -0.1rem;
 }
 
+.btn__next {
+    position: absolute;
+    display: grid;
+    grid-template-columns: repeat(2, max-content);
+    bottom: 1rem;
+    right: 1rem;
+    margin-inline: 0.7rem;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn__next::after {
+    content: "";
+    background-image: url(../assets/img/arrow_btn_flipped.png);
+    background-size: 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    width: 2.5rem;
+    height: 1.5rem;
+    margin-top: -0.1rem;
+}
+
 /* ----- index.html ----- */
 
 .section--index {
@@ -282,6 +304,7 @@ html:has(.body.visible),
     overflow: hidden;
 }
 
+.body--app:has(.step1.visible) .canvas,
 .body--app:has(.body--connect.visible) .canvas,
 .body--app:has(.body--dancers.visible) .canvas,
 .body--app:has(.body--emotions.visible) .canvas,
@@ -435,6 +458,11 @@ html:has(.body.visible),
 
 .step__name {
     font-size: 1.5rem;
+}
+
+
+.step1 {
+    position: relative;
 }
 
 /* ----- connect.html ----- */
@@ -839,7 +867,7 @@ html:has(.body--dancers.visible) {
     font-size: var(--fontsize-l);
 }
 
-.body--emotions.small .emotion__title{
+.body--emotions.small .emotion__title {
     align-self: flex-start;
 }
 
@@ -1058,6 +1086,7 @@ html:has(.body--dancers.visible) {
 .vid__wrapper--ending>* {
     grid-column: 1;
     grid-row: 1;
+    transition: filter 0.2s ease-in-out;
 }
 
 .ending__vid {
@@ -1071,7 +1100,7 @@ html:has(.body--dancers.visible) {
     filter: blur(2px);
 }
 
-.vid__wrapper--ending.paused::after {
+.vid__wrapper--ending::after {
     grid-column: 1;
     grid-row: 1;
     content: "";
@@ -1082,6 +1111,11 @@ html:has(.body--dancers.visible) {
     width: 3.5rem;
     height: 3.5rem;
     z-index: 10;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+}
+.vid__wrapper--ending.paused::after {
+    opacity: 1;
 }
 
 .scapino__wrapper--ending {
