@@ -26,9 +26,9 @@ const room = { code: null, hostId: null, clients: {} };
 let currentStepIndex = 0, currentPageName = `steps`, currentDancerIndex = 0, currentEmotionIndex = 0;
 let isPhoneDown = false;
 let myCoords, otherCoords;
-const dance = { totalDances: 3, currentDanceIndex: 0 };
-const tolerance = 50;
-const canvas = { ctx: null, height: null, width: null };
+const dance = { totalDances: 3, currentDanceIndex: 0, emotion: `calm` };
+const tolerance = 100;
+const canvas = { height: null, width: null };
 const screenDimensions = { height: innerHeight, width: innerWidth };
 const swipe = { start: { x: null, y: null }, end: { x: null, y: null }, angle: null, isSwiping: false, isMouseDown: false, };
 const emotinoEvents = [`moving in with their partner for the first time!`, `first month's bill is way higher then expected!`];
@@ -65,7 +65,9 @@ const updateSteps = () => {
         $canvas.removeEventListener(`touchstart`, handleTouchStart);
         $canvas.removeEventListener(`touchmove`, handleTouchMove);
         $canvas.removeEventListener(`touchend`, handleTouchEnd);
+
         getDeviceOrientation();
+        $nextStep.addEventListener(`click`, handleNextStepClick);
     } else {
         $canvas.addEventListener(`mousedown`, handleMouseDown);
         $canvas.addEventListener(`mousemove`, handleMouseMove);
@@ -93,7 +95,6 @@ const updateEmotions = () => {
         $bodyEmotions.style.gridTemplateRows = `repeat(${currentEmotionIndex.length}, 1fr)`;
         for (let i = 0; i < currentEmotionIndex.length - 1; i++) {
             $emotionDividers[currentEmotionIndex[i] - 1].classList.remove(`hide`);
-            console.log($emotionDividers[currentEmotionIndex[i] - 1]);
         }
         if (currentEmotionIndex.length >= 3) $bodyEmotions.classList.add(`small`);
     } else {
@@ -111,7 +112,7 @@ const updatePages = () => {
     if (currentPageName === `dance`) {
         $canvas.classList.add(`dance`);
         $video.currentTime = 0;
-        danceInit(socket, room, canvas);
+        danceInit(socket, room, canvas, dance.emotion);
         clearInterval(danceTimeout);
         danceTimeout = setTimeout(() => socket.emit(`danceEnded`, room.code), 13000)
     } else {
@@ -128,7 +129,7 @@ const resetFunctionality = () => {
 
     $dancers.forEach(dancer => dancer.removeEventListener(`click`, handleDancerClick));
     $pickedDancer.classList.remove(`visible`);
-    $emotions.forEach(emotion => emotion.removeEventListener(`click`, handleEmotionClick));
+    $emotions.forEach(emotion => emotion.querySelector(`.btn`).removeEventListener(`click`, handleEmotionClick));
 }
 const applyFunctionality = () => {
     switch (currentPageName) {
@@ -152,7 +153,7 @@ const applyFunctionality = () => {
 
         case `emotions`:
             $emotionEvent.textContent = emotinoEvents[dance.currentDanceIndex - 1];
-            $emotions.forEach(emotion => emotion.addEventListener(`click`, handleEmotionClick));
+            $emotions.forEach(emotion => emotion.querySelector(`.btn`).addEventListener(`click`, handleEmotionClick));
             showEmotions();
             break;
         default:
@@ -234,22 +235,31 @@ const handleDancerClick = e => {
     const $dancer = $dancers[currentDancerIndex - 1];
     const dancer = {
         title: $dancer.querySelector(`.dancer__title`).textContent,
-        name: $dancer.querySelector(`.dancer__author`).textContent
+        name: $dancer.querySelector(`.dancer__author`).textContent,
+        emotion: $dancer.querySelector(`.dancer__emotion`).textContent
     }
-    socket.emit(`dancerPicked`, dancer, room.hostId);
+
+    socket.emit(`dancerPicked`, room.code, dancer);
 }
 const showPickedDancer = (dancer) => {
-    $pickedDancer.classList.add(`visible`);
-    $pickedDancer.querySelector(`.picked__title`).textContent = dancer.title;
-    $pickedDancer.querySelector(`.picked__dancer`).textContent = dancer.name;
+    if (socket.id === room.hostId) {
+        $pickedDancer.classList.add(`visible`);
+        $pickedDancer.querySelector(`.picked__title`).textContent = dancer.title;
+        $pickedDancer.querySelector(`.picked__dancer`).textContent = dancer.name;
 
-    const dancerName = dancer.name.split(' ')[0].toLowerCase();
-    $pickedDancer.querySelector(`.picked__img`).setAttribute(`src`, `./assets/img/dancer_${dancerName}_small.png`)
-    $pickedDancer.querySelector(`.picked__img`).setAttribute(`atr`, dancer.name)
+        const dancerName = dancer.name.split(' ')[0].toLowerCase();
+        $pickedDancer.querySelector(`.picked__img`).setAttribute(`src`, `./assets/img/dancer_${dancerName}_small.png`);
+        $pickedDancer.querySelector(`.picked__img`).setAttribute(`atr`, dancer.name);
+    }
+
+    dance.emotion = dancer.emotion;
 }
 
 // ----- dance ----- //
-const handleInstructionBtnClick = e => socket.emit(`showDance`, room.code);
+const handleInstructionBtnClick = e => {
+    console.log(dance.emotion);
+    socket.emit(`showDance`, room.code, dance.emotion);
+}
 
 // ----- emotions ----- //
 const showEmotions = () => {
@@ -274,11 +284,12 @@ const showEmotions = () => {
 
     updateEmotions();
 }
-const handleEmotionClick = () => {
-    if (dance.currentDanceIndex < dance.totalDances) socket.emit(`showDance`, room.code);
+const handleEmotionClick = e => {
+    dance.emotion = e.target.previousElementSibling.textContent;
+    console.log(dance.emotion);
+    if (dance.currentDanceIndex < dance.totalDances) socket.emit(`showDance`, room.code, dance.emotion);
     else window.location.href = 'ending.html';
 }
-
 
 // ----- coords ----- //
 const updateCoords = (socketRoom) => {
@@ -469,7 +480,7 @@ const connectSocket = () => {
         socket.emit(`connectToRoom`, room.code, screenDimensions);
     })
 
-    if (socket) socketListeners();
+    if (socket) socketListeners()
     else alert(`socket connection not working`);
 }
 const socketListeners = () => {
@@ -507,11 +518,10 @@ const socketListeners = () => {
         updatePages();
     });
 
-    socket.on(`dancerPicked`, (dancer) => {
-        showPickedDancer(dancer);
-    })
+    socket.on(`dancerPicked`, (dancer) => showPickedDancer(dancer));
 
-    socket.on(`showDance`, () => {
+    socket.on(`showDance`, emotion => {
+        dance.emotion = emotion;
         currentPageName = `dance`;
         updatePages();
     })

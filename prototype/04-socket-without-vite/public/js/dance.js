@@ -1,12 +1,16 @@
 import { getExtremeCoords } from './shared/utils.js';
 
 // ----- selectors ---- //
+const $canvas = document.querySelector(`.canvas`);
 const $video = document.querySelector(`.video`);
 
 // ----- global variables ----- //
 let socket, room, canvas;
 let animationFrameId;
 const tolerance = 50;
+let emotion;
+const emotionSpeed = { calm: 0.005, excitement: 1000, surprise: 1, anxiety: 100, sadness: 0.01, anger: 500 }
+let danceElements = [];
 let emptyCoords = [], allCoords = [], roomClients = [];
 let video, attractions = [], repulsions = [];
 
@@ -251,18 +255,80 @@ const animateVideo = () => {
 
     if (attractionsChanged) socket.emit(`updateForces`, room.code, { attractions, repulsions }, video);
     animationFrameId = requestAnimationFrame(animateVideo);
+
+    updatedanceElements();
 }
 
-export const danceInit = (socketData, roomData, canvasData) => {
+// ----- elements ----- //
+const createDanceElements = (count) => {
+    const elements = [];
+
+    for (let i = 0; i < count; i++) {
+        const size = randomNumber(100, 200);
+        const opacity = 1;
+        const opacityDecrease = randomNumber(1, 100) * emotionSpeed[emotion];
+        const x = randomNumber(0, canvas.width - size);
+        const y = randomNumber(0, canvas.height - size);
+
+        const element = setDanceElements(x, y, size, opacity);
+
+        elements.push({ element, opacity, opacityDecrease });
+    }
+    return elements;
+}
+const setDanceElements = (x, y, size, opacity) => {
+    const $element = document.createElement(`img`);
+    $element.classList.add(`canvas__element`);
+    $element.setAttribute(`src`, `../assets/img/dance_${emotion}.svg`)
+    $element.style.width = `${size}px`;
+    $element.style.left = `${x}px`;
+    $element.style.top = `${y}px`;
+    $element.style.opacity = opacity;
+
+    $canvas.appendChild($element);
+    return $element;
+}
+const updatedanceElements = () => {
+    if (danceElements.length > 0) {
+        danceElements = danceElements.map(element => {
+            element.opacity = Math.max(0, element.opacity - element.opacityDecrease);
+            element.element.style.opacity = element.opacity;
+            if (element.opacity === 0) element.element.remove();
+            return element;
+        }).filter(element => element.opacity > 0);
+    }
+
+    while (danceElements.length < 5) {
+        const size = randomNumber(100, 200);
+        const opacity = 1;
+        const opacityDecrease = randomNumber(1, 100) / 1000;
+        const x = randomNumber(0, canvas.width - size);
+        const y = randomNumber(0, canvas.height - size);
+
+        const element = setDanceElements(x, y, size, opacity);
+
+        danceElements.push({ element, opacity, opacityDecrease });
+    }
+}
+
+export const danceInit = (socketData, roomData, canvasData, emotionData) => {
     socket = socketData;
     room = roomData;
     canvas = canvasData;
+    console.log(canvas);
+    emotion = emotionData
     video = new Mover();
 
     updateCoords(roomData);
     findGaps();
 
     if (socket.id === room.hostId) {
+        if (danceElements.length > 0) {
+            danceElements.forEach(element => element.element.remove());
+        }
+        danceElements = [];
+        danceElements = createDanceElements(5);
+        socket.emit(`danceElements`, room.code, danceElements);
         createForces();
         handleAnimation();
     }
@@ -271,6 +337,19 @@ export const danceInit = (socketData, roomData, canvasData) => {
         if (socket.id !== room.hostId) {
             setForces(forces)
             video = new Mover(videoData.pos, videoData.vel, videoData.acc)
+        }
+    })
+
+    socket.on(`danceElements`, (elements) => {
+        if (socket.id !== room.hostId) {
+            if (danceElements.length > 0) {
+                danceElements.forEach(element => element.element.remove());
+            }
+            danceElements = [];
+            danceElements = danceElements.map(element => {
+                const $elements = setDanceElements(element.x, element.y, element.size, element.time);
+                return $elements
+            });
         }
     })
 

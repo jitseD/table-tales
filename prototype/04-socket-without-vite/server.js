@@ -185,11 +185,12 @@ io.on('connection', (socket) => {
     })
 
     socket.on(`showDancers`, (code) => io.to(code).emit(`showDancers`));
-    socket.on(`dancerPicked`, (dancer, targetId) => io.to(targetId).emit(`dancerPicked`, dancer));
+    socket.on(`dancerPicked`, (code, dancer) => io.to(code).emit(`dancerPicked`, dancer));
 
-    socket.on(`showDance`, (code) => io.to(code).emit(`showDance`));
-    socket.on(`updateForces`, (code, forces, square) => io.to(code).emit(`updateForces`, forces, square))
-    socket.on(`boxOnScreen`, (targetId, square, forces) => io.to(targetId).emit(`boxOnScreen`, square, forces, socket.id))
+    socket.on(`showDance`, (code, emotion) => io.to(code).emit(`showDance`, emotion));
+    socket.on(`updateForces`, (code, forces, square) => io.to(code).emit(`updateForces`, forces, square));
+    socket.on(`boxOnScreen`, (targetId, square, forces) => io.to(targetId).emit(`boxOnScreen`, square, forces, socket.id));
+    socket.on(`danceElements`, (code, elements) => io.to(code).emit(`danceElements`, elements));
     socket.on(`danceEnded`, (code) => io.to(code).emit(`danceEnded`));
 
     socket.on('disconnect', () => {

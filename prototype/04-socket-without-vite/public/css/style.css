@@ -330,8 +330,13 @@ html:has(.body.visible),
     object-fit: fill;
 }
 
+.canvas__element {
+    aspect-ratio: 1;
+}
+
 .canvas.dance .connection__line,
-.body--app:has(.body--emotions.visible) .connection__line {
+.body--app:has(.body--emotions.visible) .connection__line, 
+.body--app:has(.body--emotions.visible) .canvas {
     display: none;
 }
 
@@ -344,7 +349,8 @@ html:has(.body.visible),
     display: none;
 }
 
-.app__back {
+.app__back,
+.step__next {
     z-index: 20;
 }
 
@@ -363,6 +369,7 @@ html:has(.body.visible),
     background-size: 100%;
     transition: background-position 0.5s ease-in-out;
     pointer-events: none;
+    overflow: hidden;
 }
 
 .body--steps:has(.step1.visible) {
@@ -771,6 +778,10 @@ html:has(.body--dancers.visible) {
 
 /* ----- emotions ----- */
 
+.body--emotions{
+    background-image: url(../assets/img/bg_dark.png);
+}
+
 .section--explanation {
     width: 100%;
     height: 100%;
@@ -1114,6 +1125,7 @@ html:has(.body--dancers.visible) {
     opacity: 0;
     transition: opacity 0.2s ease-in-out;
 }
+
 .vid__wrapper--ending.paused::after {
     opacity: 1;
 }
