@@ -103,7 +103,7 @@ const calculateSimultaneousSwipes = (code, latestSwipeEvent) => {
 }
 const calculateRelPos = ({ clientA, swipeA, clientB, swipeB }) => {
     const angleDiff = normalizeAngle(swipeB.angle - swipeA.angle);                                 // deg
-    const coords = Array.from({ length: 10 }, (_, i) => {
+    const coords = Array.from({ length: 4 }, (_, i) => {
         const coord = getScreenCoord(i, clientB);
         return calculateRelCoords(coord, angleDiff, clientA, clientB, swipeA, swipeB)
     })
@@ -163,8 +163,9 @@ const updateRoomCanvas = (code) => {
 
     // shift coords so that lowest value is origin
     const shiftX = minX, shiftY = minY;
-    clients.forEach(client => client.coords.map(({ x, y }) => ({ x: x - shiftX, y: y - shiftY })));
-
+    clients.forEach(client => {
+        client.coords = client.coords.map(({ x, y }) => ({ x: x - shiftX, y: y - shiftY }));
+    });
     rooms[code].canvas = { width: maxX - minX, height: maxY - minY };
     io.to(code).emit(`updateCanvas`, rooms[code]);
 }
