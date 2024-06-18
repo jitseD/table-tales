@@ -1,0 +1,58 @@
+.hide {
+    display: none;
+}
+
+.canvas {
+    position: absolute;
+    z-index: 10;
+    top: 0;
+    left: 0;
+    transform-origin: top left;
+}
+
+.canvas>* {
+    position: absolute;
+    z-index: -10;
+    top: 0;
+    left: 0;
+    transform-origin: top left;
+}
+
+.video {
+    width: 300px;
+    z-index: 10;
+}
+
+.connection__line {
+    width: 6px;
+    object-fit: fill;
+}
+
+*::selection {
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+html,
+body {
+    width: 100vw;
+    height: 100dvh;
+    overflow: hidden;
+    position: relative;
+    background-color: black;
+}
+
+.no-touch {
+    pointer-events: none;
+}
+
+h1,
+p {
+    color: white;
+}
+
+.attraction {
+    background-color: green;
+    aspect-ratio: 1;
+}

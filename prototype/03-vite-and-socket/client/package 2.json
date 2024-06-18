@@ -1,0 +1,19 @@
+{
+  "name": "03-vite-and-socket",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "prev": "vite preview --host"
+    },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "socket.io-client": "^4.7.5",
+    "vite": "^5.3.1"
+  }
+}

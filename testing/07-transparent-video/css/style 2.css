@@ -1,0 +1,33 @@
+body {
+    animation: backgroundAnimation forwards 20s infinite;
+}
+
+video {
+    width: 100%;
+}
+
+@keyframes backgroundAnimation {
+    0% {
+        background-color: white;
+    }
+
+    20% {
+        background-color: red;
+    }
+
+    40% {
+        background-color: blue;
+    }
+
+    60% {
+        background-color: green;
+    }
+
+    80% {
+        background-color: yellow;
+    }
+
+    100% {
+        background-color: white;
+    }
+}
