@@ -256,7 +256,7 @@ const animateVideo = () => {
 export const danceInit = (socketData, roomData, canvasData) => {
     socket = socketData;
     room = roomData;
-    canvas = canvasData
+    canvas = canvasData;
     video = new Mover();
 
     updateCoords(roomData);
@@ -275,10 +275,10 @@ export const danceInit = (socketData, roomData, canvasData) => {
     })
 
     socket.on(`boxOnScreen`, (videoData, forcesData, fromId) => {
-        setForces(forcesData)
+        setForces(forcesData);
         video = new Mover(videoData.pos, videoData.vel, videoData.acc);
         const timeDiff = Math.abs($video.currentTime - videoData.lastTimestamp);
-        if (timeDiff > 0.5)  $video.currentTime = videoData.lastTimestamp;
+        if (timeDiff > 0.5) $video.currentTime = videoData.lastTimestamp;
 
         video.update();
         video.show();

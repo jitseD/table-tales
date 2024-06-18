@@ -190,6 +190,7 @@ io.on('connection', (socket) => {
     socket.on(`showDance`, (code) => io.to(code).emit(`showDance`));
     socket.on(`updateForces`, (code, forces, square) => io.to(code).emit(`updateForces`, forces, square))
     socket.on(`boxOnScreen`, (targetId, square, forces) => io.to(targetId).emit(`boxOnScreen`, square, forces, socket.id))
+    socket.on(`danceEnded`, (code) => io.to(code).emit(`danceEnded`));
 
     socket.on('disconnect', () => {
         console.log(`❌ disconnection`);

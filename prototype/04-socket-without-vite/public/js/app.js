@@ -13,17 +13,24 @@ const $dancers = document.querySelectorAll(`.section--dancer`);
 const $pickedDancer = document.querySelector(`.instruction__picked`);
 const $instructionBtn = document.querySelector(`.instruction__btn`);
 const $video = document.querySelector(`.video`);
+const $bodyEmotions = document.querySelector(`.body--emotions`);
+const $emotionDividers = document.querySelectorAll(`.emotion__divider`);
+const $explanation = document.querySelector(`.section--explanation`);
+const $emotionEvent = document.querySelector(`.explanation__event`);
+const $emotions = document.querySelectorAll(`.section--emotion`);
 
 // ----- global variables ----- //
 let socket;
 const room = { code: null, hostId: null, clients: {} };
-let currentStepIndex = 0, currentPageName = `steps`, currentDancerIndex = 0;
+let currentStepIndex = 0, currentPageName = `steps`, currentDancerIndex = 0, currentEmotionIndex = 0;
 let isPhoneDown = false;
 let myCoords, otherCoords;
+const dance = { totalDances: 3, currentDanceIndex: 0 };
 const tolerance = 50;
 const canvas = { ctx: null, height: null, width: null };
 const screenDimensions = { height: innerHeight, width: innerWidth };
 const swipe = { start: { x: null, y: null }, end: { x: null, y: null }, angle: null, isSwiping: false, isMouseDown: false, };
+const emotinoEvents = [`moving in with their partner for the first time!`, `first month's bill is way higher then expected!`];
 
 // ----- miscellaneous ----- //
 const requestWakeLock = async () => {
@@ -71,19 +78,43 @@ const updateDancers = () => {
     const $sections = [$instruction, ...$dancers];
     $sections.forEach(section => section.classList.add(`hide`));
     $sections[currentDancerIndex].classList.remove(`hide`);
-    console.log(currentDancerIndex);
+}
+const updateEmotions = () => {
+    const $sections = [$explanation, ...$emotions];
+    $sections.forEach(section => section.classList.add(`hide`));
+    if (Array.isArray(currentEmotionIndex)) {
+        currentEmotionIndex.forEach((index) => {
+            $sections[index].classList.remove(`hide`);
+        })
+        $bodyEmotions.style.gridTemplateRows = `repeat(${currentEmotionIndex.length}, 1fr)`;
+        for (let i = 0; i < currentEmotionIndex.length - 1; i++) {
+            $emotionDividers[currentEmotionIndex[i] - 1].classList.remove(`hide`);
+            console.log($emotionDividers[currentEmotionIndex[i] - 1]);
+        }
+        if (currentEmotionIndex.length >= 3) $bodyEmotions.classList.add(`small`);
+    } else {
+        $sections[currentEmotionIndex].classList.remove(`hide`);
+        for (let i = 0; i < $emotionDividers.length; i++) {
+            $emotionDividers[i].classList.add(`hide`);
+        }
+    }
 }
 const updatePages = () => {
     $pages.forEach(page => page.classList.remove(`visible`));
     resetFunctionality();
+    let danceTimeout;
 
     if (currentPageName === `dance`) {
         $canvas.classList.add(`dance`);
+        $video.currentTime = 0;
         danceInit(socket, room, canvas);
+        clearInterval(danceTimeout);
+        danceTimeout = setTimeout(() => socket.emit(`danceEnded`, room.code), 13000)
     } else {
+        clearInterval(danceTimeout);
         document.querySelector(`.body--${currentPageName}`).classList.add(`visible`)
-        applyFunctionality();
         $canvas.classList.remove(`dance`);
+        applyFunctionality();
     }
 }
 const resetFunctionality = () => {
@@ -93,6 +124,7 @@ const resetFunctionality = () => {
 
     $dancers.forEach(dancer => dancer.removeEventListener(`click`, handleDancerClick));
     $pickedDancer.classList.remove(`visible`);
+    $emotions.forEach(emotion => emotion.removeEventListener(`click`, handleEmotionClick));
 }
 const applyFunctionality = () => {
     switch (currentPageName) {
@@ -112,6 +144,12 @@ const applyFunctionality = () => {
             $dancers.forEach(dancer => dancer.addEventListener(`click`, handleDancerClick));
             $instructionBtn.addEventListener(`click`, handleInstructionBtnClick);
             showDancers();
+            break;
+
+        case `emotions`:
+            $emotionEvent.textContent = emotinoEvents[dance.currentDanceIndex - 1];
+            $emotions.forEach(emotion => emotion.addEventListener(`click`, handleEmotionClick));
+            showEmotions();
             break;
         default:
             break;
@@ -148,7 +186,7 @@ const getDeviceOrientation = async () => {
         try {
             const permissionState = await DeviceOrientationEvent.requestPermission();
             if (permissionState) window.addEventListener('deviceorientation', handleOrientationEvent);
-            else console.error(`permission not granted`);
+            else console.error(); (`permission not granted`);
         } catch (error) {
             console.error(error);
         }
@@ -177,12 +215,9 @@ const handleConnectBtnClick = e => socket.emit(`showDancers`, room.code);
 const showDancers = () => {
     const clientIds = Object.values(room.clients).map(client => client.id);
 
-    console.log(socket.id);
     for (let i = 0; i < clientIds.length; i++) {
-        console.log(clientIds[i], socket.id === clientIds[i], i);
         if (socket.id === clientIds[i]) currentDancerIndex = i;
     }
-    console.log(currentDancerIndex);
 
     updateDancers();
 }
@@ -206,6 +241,34 @@ const showPickedDancer = (dancer) => {
 
 // ----- dance ----- //
 const handleInstructionBtnClick = e => socket.emit(`showDance`, room.code);
+
+// ----- emotions ----- //
+const showEmotions = () => {
+    const clientIds = Object.values(room.clients).map(client => client.id);
+
+    if (clientIds[0] === socket.id) currentEmotionIndex = 0;
+    else {
+        const emotionClients = clientIds.splice(1);
+        const emotionsPerClient = Math.ceil($emotions.length / emotionClients.length);
+
+        const clientEmotions = {};
+        emotionClients.forEach((clientId, index) => {
+            clientEmotions[clientId] = [];
+            for (let i = 0; i < emotionsPerClient; i++) {
+                const emotionIndex = (index * emotionsPerClient + i) % $emotions.length + 1;
+                clientEmotions[clientId].push(emotionIndex);
+            }
+        });
+
+        currentEmotionIndex = clientEmotions[socket.id];
+    }
+
+    updateEmotions();
+}
+const handleEmotionClick = () => {
+    if (dance.currentDanceIndex < dance.totalDances) socket.emit(`showDance`, room.code);
+    else window.location.href = 'ending.html';
+}
 
 
 // ----- coords ----- //
@@ -442,6 +505,20 @@ const socketListeners = () => {
     socket.on(`showDance`, () => {
         currentPageName = `dance`;
         updatePages();
+    })
+
+    let danceEndedTimeout;
+
+    socket.on(`danceEnded`, () => {
+        clearTimeout(danceEndedTimeout);
+        danceEndedTimeout = setTimeout(() => {
+            dance.currentDanceIndex++;
+            if (dance.currentDanceIndex === dance.totalDances) window.location.href = 'ending.html';
+            else {
+                currentPageName = 'emotions';
+                updatePages();
+            }
+        }, 1000);
     })
 
     socket.on('disconnect', () => {
