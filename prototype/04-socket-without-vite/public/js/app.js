@@ -7,11 +7,15 @@ const $appNav = document.querySelector(`.app__back`);
 const $canvas = document.querySelector(`.canvas`);
 const $connectedNumber = document.querySelector(`.connect__number`);
 const $connectBtn = document.querySelector(`.connect__btn`);
+const $instruction = document.querySelector(`.section--instruction`);
+const $dancers = document.querySelectorAll(`.section--dancer`);
+const $pickedDancer = document.querySelector(`.instruction__picked`);
+const $instructionBtn = document.querySelector(`.instruction__btn`);
 
 // ----- global variables ----- //
 let socket;
 const room = { code: null, hostId: null, clients: {} };
-let currentStepIndex = 0, currentPageIndex = 1;
+let currentStepIndex = 0, currentPageName = `steps`, currentDancerIndex = 0;
 let isPhoneDown = false;
 let myCoords, otherCoords;
 const tolerance = 50;
@@ -61,31 +65,48 @@ const updateSteps = () => {
         $canvas.addEventListener(`touchend`, handleTouchEnd);
     }
 }
+const updateDancers = () => {
+    const $sections = [$instruction, ...$dancers];
+    $sections.forEach(section => section.classList.add(`hide`));
+    $sections[currentDancerIndex].classList.remove(`hide`);
+}
 const updatePages = () => {
     $pages.forEach(page => page.classList.remove(`visible`));
-    $pages[currentPageIndex].classList.add(`visible`);
+    if (currentPageName !== `dance`) document.querySelector(`.body--${currentPageName}`).classList.add(`visible`)
 
-    switch (currentPageIndex) {
-        case 0:
+    resetFunctionality();
+    applyFunctionality();
+}
+const resetFunctionality = () => {
+    $connectBtn.classList.add(`hide`);
+    $connectBtn.removeEventListener(`click`, handleConnectBtnClick);    
+
+    $dancers.forEach(dancer => dancer.removeEventListener(`click`, handleDancerClick));
+    $pickedDancer.classList.remove(`visible`);
+}
+const applyFunctionality = () => {
+    switch (currentPageName) {
+        case `steps`:
             if (currentStepIndex === 0) $appNav.textContent = `go back`;
             else $appNav.textContent = `step 0${currentStepIndex}`;
-
-            $canvas.style.pointerEvents = `unset`;
             break;
-        case 1:
+        case `connect`:
             $appNav.textContent = `instructions`;
-            $canvas.style.pointerEvents = `none`;
 
             if (socket.id === room.hostId) {
                 $connectBtn.classList.remove(`hide`);
                 $connectBtn.addEventListener(`click`, handleConnectBtnClick);
-            } else {
-                $connectBtn.classList.add(`hide`);
-                $connectBtn.removeEventListener(`click`, handleConnectBtnClick);
             }
             break;
+        case `dancers`:
+            $dancers.forEach(dancer => dancer.addEventListener(`click`, handleDancerClick));
+            $instructionBtn.addEventListener(`click`, handleInstructionBtnClick);
+            showDancers();
+            break;
+        case `dance`:
+            console.log(`dance`);
+            break;
         default:
-            $appNav.textContent = `go back`;
             break;
     }
 }
@@ -129,7 +150,7 @@ const getDeviceOrientation = async () => {
     } else console.error('not suppoerted');
 }
 const handleAppNavClick = () => {
-    if (currentPageIndex === 0) {
+    if (currentPageName === `steps`) {
         if (currentStepIndex === 0) {
             window.location.href = 'index.html';
         } else {
@@ -137,19 +158,44 @@ const handleAppNavClick = () => {
             updateSteps();
         }
     } else {
-        currentPageIndex--;
         currentStepIndex = 0;
         updatePages();
+        if (currentPageName === `connect`) currentPageName = `steps`;
+        else if (currentPageName === `dancers`) currentPageName = `connect`;
     }
 }
 
 // ----- dancers ----- //
-const handleConnectBtnClick = e => {
-    currentPageIndex = 2;
-    updatePages();
-    console.log(currentPageIndex);
+const handleConnectBtnClick = e => socket.emit(`showDancers`, room.code);
+const showDancers = () => {
+    const clientIds = Object.values(room.clients).map(client => client.id);
+
+    for (let i = 0; i < clientIds.length; i++) {
+        if (socket.id === clientIds[i]) currentDancerIndex = i;
+    }
+
+    updateDancers();
+}
+const handleDancerClick = e => {
+    const $dancer = $dancers[currentDancerIndex - 1];
+    const dancer = {
+        title: $dancer.querySelector(`.dancer__title`).textContent,
+        name: $dancer.querySelector(`.dancer__author`).textContent
+    }
+    socket.emit(`dancerPicked`, dancer, room.hostId);
+}
+const showPickedDancer = (dancer) => {
+    $pickedDancer.classList.add(`visible`);
+    $pickedDancer.querySelector(`.picked__title`).textContent = dancer.title;
+    $pickedDancer.querySelector(`.picked__dancer`).textContent = dancer.name;
+
+    const dancerName = dancer.name.split(' ')[0].toLowerCase();
+    $pickedDancer.querySelector(`.picked__img`).setAttribute(`src`, `./assets/img/dancer_${dancerName}_small.png`)
+    $pickedDancer.querySelector(`.picked__img`).setAttribute(`atr`, dancer.name)
 }
 
+// ----- dance ----- //
+const handleInstructionBtnClick = e => socket.emit(`showDance`, room.code);
 
 // ----- coords ----- //
 const updateCoords = (socketRoom) => {
@@ -357,11 +403,25 @@ const socketListeners = () => {
             if (client.connected) return client
         })).length;
         if (totalClients === totalConnectedClients) {
-            currentPageIndex = 1;
+            currentPageName = `connect`;
             setTimeout(() => updatePages(), 1000);
         }
 
         $connectedNumber.textContent = String(totalConnectedClients).padStart(2, '0');
+    })
+
+    socket.on(`showDancers`, () => {
+        currentPageName = `dancers`;
+        updatePages();
+    });
+
+    socket.on(`dancerPicked`, (dancer) => {
+        showPickedDancer(dancer);
+    })
+
+    socket.on(`showDance`, () => {
+        currentPageName = `dance`;
+        updatePages();
     })
 
     socket.on('disconnect', () => {

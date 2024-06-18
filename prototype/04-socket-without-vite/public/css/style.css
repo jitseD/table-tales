@@ -20,6 +20,7 @@
 
 html {
     box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 *,
@@ -66,6 +67,7 @@ html,
 
 .body {
     padding-inline: 1rem;
+    overflow-x: hidden;
 }
 
 .section {
@@ -236,7 +238,23 @@ button {
 
 .body--app {
     padding: 0;
+    transition: background-image 0.5s ease-in-out;
 }
+
+html:has(.body--emotions.visible),
+html:has(.body--dance.visible), .body--app {
+    background-color: var(--color-black);
+    color: var(--color-white);
+    background-image: url(../assets/img/bg_dark.png);
+    background-size: cover;
+}
+
+.body--app:has(.body--steps.visible),
+.body--app:has(.body--connect.visible),
+.body--app:has(.body--dancers.visible) {
+    background-image: url(../assets/img/bg_light.png);
+}
+
 
 .body--app>.page {
     grid-column: 1;
@@ -259,7 +277,18 @@ button {
     transform-origin: top left;
     width: 100vw;
     height: 100vh;
+    overflow: hidden;
 }
+
+.body--app:has(.body--connect.visible) .canvas,
+.body--app:has(.body--dancers.visible) .canvas {
+    pointer-events: none;
+}
+
+.body--app:has(.body--dancers.visible) .canvas {
+    display: none;
+}
+
 
 .canvas>* {
     position: absolute;
@@ -274,8 +303,17 @@ button {
     object-fit: fill;
 }
 
+.body--app:has(.body--steps:not(.visible), .body--connect:not(.visible), .body--dancers:not(.visible), .body--emotions:not(.visible)) .connection__line {
+    display: none;
+}
+
 .app__back {
     z-index: 20;
+}
+
+.body--app:has(.body--dancers.visible) .app__back,
+.body--app:has(.body--emotions.visible) .app__back {
+    display: none;
 }
 
 /* ----- steps ----- */
@@ -478,8 +516,42 @@ button {
 
 /* ----- dancer.html ----- */
 
+.body--dancer {
+    overflow-y: hidden;
+}
+
+html:has(.body--dancers.visible) {
+    overflow: hidden;
+}
+
 .section--instruction {
-    grid-template-rows: repeat(4, min-content);
+    grid-template-rows: 1fr min-content;
+    height: fit-content;
+    overflow: hidden;
+    padding: 2rem 1rem;
+    align-self: center;
+    margin-left: -1rem;
+    width: 100vw;
+    max-width: 450px;
+}
+
+.section--instruction:has(.instruction__picked.visible) {
+    height: 100dvh;
+}
+
+.text__wrapper--instruction {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    max-height: 18rem;
+    width: calc(100vw - 2rem);
+    max-width: calc(450px - 2rem);
+}
+
+.section--instruction:has(.instruction__picked:not(.visible)) .text__wrapper--instruction {
+    grid-column: 1;
+    grid-row: 1/-1;
 }
 
 .instruction__header {
@@ -498,7 +570,9 @@ button {
     line-height: 120%;
 }
 
-.instructions__picked {
+.instruction__picked {
+    grid-column: 1;
+    grid-row: 2;
     display: grid;
     grid-template-columns: 100%;
     grid-template-rows: min-content 1fr repeat(2, min-content);
@@ -506,6 +580,11 @@ button {
     gap: 0.5rem;
     width: calc(100vw - 2rem);
     max-width: calc(450px - 2rem);
+    transition: transform 0.5s ease-in-out, position 0.5s ease-in-out;
+}
+
+.instruction__picked:not(.visible) {
+    transform: translateY(100vh);
 }
 
 .picked__underlined {
@@ -614,7 +693,7 @@ button {
 .dancer__name::after {
     content: "";
     border-bottom: solid 0.2rem;
-    border-image: url(../assets/img/white_line.png) 40;
+    border-image: url(../assets/img/line_white.png) 40;
     display: block;
     height: 0.5rem;
     width: 100%;
@@ -648,17 +727,6 @@ button {
 }
 
 /* ----- emotions ----- */
-
-html:has(.body--emotions.visible),
-.body--emotions.visible,
-html:has(.body--dance.visible),
-.body--dance.visible {
-    background-color: var(--color-black);
-    color: var(--color-white);
-    background-image: url(../assets/img/bg_dark.png);
-    background-size: cover;
-}
-
 
 .section--explanation {
     width: 100%;

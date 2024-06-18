@@ -184,12 +184,10 @@ io.on('connection', (socket) => {
         calculateSimultaneousSwipes(code, { id: socket.id, code, data, timestamp });
     })
 
-    // socket.on(`disconnectCanvas`, (code) => {
-    //     removeClientFromRoom(code, socket.id);
-    //     data.id = socket.id;
-    //     data.connected = false;
-    //     addClientToRoom(code, data);
-    // })
+    socket.on(`showDancers`, (code) => io.to(code).emit(`showDancers`));
+    socket.on(`dancerPicked`, (dancer, targetId) => io.to(targetId).emit(`dancerPicked`, dancer));
+    
+    socket.on(`showDance`, (code) => io.to(code).emit(`showDance`));
 
     socket.on('disconnect', () => {
         console.log(`❌ disconnection`);
