@@ -242,7 +242,8 @@ button {
 }
 
 html:has(.body--emotions.visible),
-html:has(.body--dance.visible), .body--app {
+html:has(.body--dance.visible),
+.body--app {
     background-color: var(--color-black);
     color: var(--color-white);
     background-image: url(../assets/img/bg_dark.png);
@@ -303,7 +304,16 @@ html:has(.body--dance.visible), .body--app {
     object-fit: fill;
 }
 
-.body--app:has(.body--steps:not(.visible), .body--connect:not(.visible), .body--dancers:not(.visible), .body--emotions:not(.visible)) .connection__line {
+.canvas.dance .connection__line {
+    display: none;
+}
+
+.video {
+    z-index: 10;
+    width: 300px;
+}
+
+.canvas:not(.dance) .video {
     display: none;
 }
 

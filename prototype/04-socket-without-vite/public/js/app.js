@@ -1,4 +1,5 @@
 import { getRoomCode, getExtremeCoords } from './shared/utils.js';
+import { danceInit } from './dance.js';
 
 // ----- selectors ----- //
 const $pages = document.querySelectorAll(`.page`);
@@ -11,6 +12,7 @@ const $instruction = document.querySelector(`.section--instruction`);
 const $dancers = document.querySelectorAll(`.section--dancer`);
 const $pickedDancer = document.querySelector(`.instruction__picked`);
 const $instructionBtn = document.querySelector(`.instruction__btn`);
+const $video = document.querySelector(`.video`);
 
 // ----- global variables ----- //
 let socket;
@@ -69,17 +71,25 @@ const updateDancers = () => {
     const $sections = [$instruction, ...$dancers];
     $sections.forEach(section => section.classList.add(`hide`));
     $sections[currentDancerIndex].classList.remove(`hide`);
+    console.log(currentDancerIndex);
 }
 const updatePages = () => {
     $pages.forEach(page => page.classList.remove(`visible`));
-    if (currentPageName !== `dance`) document.querySelector(`.body--${currentPageName}`).classList.add(`visible`)
-
     resetFunctionality();
-    applyFunctionality();
+
+    if (currentPageName === `dance`) {
+        $canvas.classList.add(`dance`);
+        danceInit(socket, room, canvas);
+    } else {
+        document.querySelector(`.body--${currentPageName}`).classList.add(`visible`)
+        applyFunctionality();
+        $canvas.classList.remove(`dance`);
+    }
 }
 const resetFunctionality = () => {
+
     $connectBtn.classList.add(`hide`);
-    $connectBtn.removeEventListener(`click`, handleConnectBtnClick);    
+    $connectBtn.removeEventListener(`click`, handleConnectBtnClick);
 
     $dancers.forEach(dancer => dancer.removeEventListener(`click`, handleDancerClick));
     $pickedDancer.classList.remove(`visible`);
@@ -102,9 +112,6 @@ const applyFunctionality = () => {
             $dancers.forEach(dancer => dancer.addEventListener(`click`, handleDancerClick));
             $instructionBtn.addEventListener(`click`, handleInstructionBtnClick);
             showDancers();
-            break;
-        case `dance`:
-            console.log(`dance`);
             break;
         default:
             break;
@@ -170,9 +177,12 @@ const handleConnectBtnClick = e => socket.emit(`showDancers`, room.code);
 const showDancers = () => {
     const clientIds = Object.values(room.clients).map(client => client.id);
 
+    console.log(socket.id);
     for (let i = 0; i < clientIds.length; i++) {
+        console.log(clientIds[i], socket.id === clientIds[i], i);
         if (socket.id === clientIds[i]) currentDancerIndex = i;
     }
+    console.log(currentDancerIndex);
 
     updateDancers();
 }
@@ -197,9 +207,11 @@ const showPickedDancer = (dancer) => {
 // ----- dance ----- //
 const handleInstructionBtnClick = e => socket.emit(`showDance`, room.code);
 
+
 // ----- coords ----- //
 const updateCoords = (socketRoom) => {
     otherCoords = [];
+    room.clients = {};
 
     Object.values(socketRoom.clients).map((client) => {
         if (client.id === socket.id) myCoords = client.coords;
@@ -369,6 +381,14 @@ const handleTouchEnd = e => {
     swipe.isSwiping = false;
 }
 
+// ----- video ----- //
+const checkVideoSupport = (type, codecs) => {
+    return $video.canPlayType(`video/${type}; codecs="${codecs}"`) !== ""
+}
+const adjustVideoFormat = (format) => {
+    $video.src = `../assets/vid/video-${format}`;
+}
+
 // ----- socket ----- //
 const connectSocket = () => {
     socket = io.connect(`/`);
@@ -383,7 +403,7 @@ const connectSocket = () => {
 const socketListeners = () => {
     socket.on(`room`, (socketRoom) => {
         room.hostId = socketRoom.host
-        updatePages();
+        updateCoords(socketRoom);
     });
 
     socket.on(`updateCanvas`, (socketRoom) => {
@@ -440,6 +460,11 @@ const appInit = () => {
     // ---- steps ---- //
     getDeviceOrientation();
     $appNav.addEventListener(`click`, handleAppNavClick);
+
+    // ----- video ----- //
+    if (checkVideoSupport(`mp4`, `hvc1`)) adjustVideoFormat(`hecv.mov`);
+    else if (checkVideoSupport(`webm`, `vp9, vorbis`)) adjustVideoFormat(`webm.webm`);
+    else console.error(`no browser support`);
 
     // ----- miscellaneous ----- //
     requestWakeLock();

@@ -186,8 +186,10 @@ io.on('connection', (socket) => {
 
     socket.on(`showDancers`, (code) => io.to(code).emit(`showDancers`));
     socket.on(`dancerPicked`, (dancer, targetId) => io.to(targetId).emit(`dancerPicked`, dancer));
-    
+
     socket.on(`showDance`, (code) => io.to(code).emit(`showDance`));
+    socket.on(`updateForces`, (code, forces, square) => io.to(code).emit(`updateForces`, forces, square))
+    socket.on(`boxOnScreen`, (targetId, square, forces) => io.to(targetId).emit(`boxOnScreen`, square, forces, socket.id))
 
     socket.on('disconnect', () => {
         console.log(`❌ disconnection`);
