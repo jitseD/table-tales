@@ -23,6 +23,6 @@ Table Tales transforms a typical café experience by introducing QR codes on tab
 
 ## Project Structure
 The project is organized into three main folders:
-- **Testing**: Contains various tests for screen connections and feature implementations in different scenarios.
-- **Prototype**: Includes iterations of the project, exploring different technologies to enhance the user experience.
-- **Table Tales**: Contains the final prototype of the project.
+- **testing**: Contains various tests for screen connections and feature implementations in different scenarios.
+- **prototype**: Includes iterations of the project, exploring different technologies to enhance the user experience.
+- **table-tales**: Contains the final prototype of the project.
