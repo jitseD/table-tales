@@ -26,3 +26,7 @@ The project is organized into three main folders:
 - **testing**: Contains various tests for screen connections and feature implementations in different scenarios.
 - **prototype**: Includes iterations of the project, exploring different technologies to enhance the user experience.
 - **table-tales**: Contains the final prototype of the project.
+
+## The Result
+
+Check out our showcase video at [vimeo.com/1017650011](https://vimeo.com/1017650011)
